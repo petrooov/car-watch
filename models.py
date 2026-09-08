@@ -22,5 +22,18 @@ class Listing:
     score: Optional[int] = None
     match_reason: Optional[str] = None
 
+    # Detail inzerátu – používá se pro AI hodnocení, do SQLite se neukládá.
+    detail_text: Optional[str] = None
+    equipment_text: Optional[str] = None
+
+    # Strukturovaný výstup AI – používá se hlavně v Telegram notifikaci.
+    ai_verdict: Optional[str] = None
+    ai_summary: Optional[str] = None
+    ai_value_score: Optional[int] = None
+    ai_equipment_score: Optional[int] = None
+    ai_reliability_score: Optional[int] = None
+    ai_positives: Optional[list[str]] = None
+    ai_warnings: Optional[list[str]] = None
+
     def as_dict(self) -> dict:
         return asdict(self)

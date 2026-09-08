@@ -86,3 +86,25 @@ Projekt obsahuje `.github/workflows/car-watch.yml`. GitHub ho spustí dvakrát d
 První běh pouze uloží současné odpovídající inzeráty (`--seed`) a **nic neposílá**. Databáze se mezi běhy uchovává pomocí GitHub Actions cache. Každý další běh porovná aktuální nabídku s uloženou databází a pošle jen inzeráty, které předtím nebyly vidět.
 
 > Pozn.: GitHub plánované workflow může mít několikaminutové zpoždění; pro hlídání 2× denně to nevadí.
+
+## AI hodnocení detailu (nové)
+
+CarWatch nyní může u nových inzerátů otevřít detail, vytáhnout viditelný text a detekovanou výbavu a požádat OpenAI model o strukturované hodnocení 0–100. AI dostává i medián ceny/nájezdu/roku právě nalezených aut stejného modelu.
+
+Do lokálního `.env` přidej:
+
+```env
+OPENAI_API_KEY=tvuj_api_klic
+```
+
+Na GitHubu přidej třetí Repository secret `OPENAI_API_KEY`. Pokud klíč chybí nebo API selže, CarWatch nespadne a použije lokální fallback score.
+
+Jednorázové poslání aktuální TOP 20:
+
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py --send-all
+```
+
+`--send-all` vezme podle `config.yml` předvýběr 50 aut, otevře jejich detail, nechá je ohodnotit AI a odešle 20 nejlepších. Běžný GitHub Actions běh se nemění: jede 2× denně a AI hodnotí pouze nové inzeráty.

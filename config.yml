@@ -11,6 +11,16 @@ notifications:
   new_listings: true
   price_changes: false
 
+ai:
+  enabled: true
+  api_key_env: OPENAI_API_KEY
+  model: gpt-5-mini
+  max_detail_chars: 14000
+  # --send-all nejdřív vezme 50 nejlepších podle levného fallback score,
+  # nechá je detailně ohodnotit AI a do Telegramu pošle top 20.
+  send_all_candidate_limit: 50
+  send_all_top_n: 20
+
 # Tvrdé limity + ideál pro scoring.
 filters:
   max_price: 550000

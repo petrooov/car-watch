@@ -9,13 +9,24 @@ from db import Change
 
 def format_change(change: Change) -> str:
     x = change.listing
-    source_names = {"sauto": "Sauto", "tipcars": "TipCars", "bazos_auto": "Bazoš Auto", "mobile_de": "mobile.de"}
+    source_names = {
+        "sauto": "Sauto",
+        "tipcars": "TipCars",
+        "bazos_auto": "Bazoš Auto",
+        "mobile_de": "mobile.de",
+    }
     kind = "🆕 NOVÝ INZERÁT" if change.kind == "new" else "💸 ZMĚNA CENY"
-    parts = [f"<b>{kind}</b> · {source_names.get(x.source, x.source)}", f"<b>{html.escape(x.title)}</b>"]
+    parts = [
+        f"<b>{kind}</b> · {source_names.get(x.source, x.source)}",
+        f"<b>{html.escape(x.title)}</b>",
+    ]
+
     if x.score is not None:
         label = "🔥" if x.score >= 90 else "✅" if x.score >= 80 else "🔎"
         model = f" · {html.escape(x.model)}" if x.model else ""
-        parts.append(f"{label} <b>{x.score}/100</b>{model}")
+        ai = " · AI" if x.ai_summary else ""
+        parts.append(f"{label} <b>{x.score}/100</b>{model}{ai}")
+
     details = []
     if x.year:
         details.append(str(x.year))
@@ -27,7 +38,24 @@ def format_change(change: Change) -> str:
         details.append(x.transmission)
     if details:
         parts.append(" · ".join(map(html.escape, details)))
-    if x.match_reason and x.match_reason != "ideální rozsah":
+
+    if x.ai_summary:
+        parts.append(f"🤖 {html.escape(x.ai_summary)}")
+        breakdown = []
+        if x.ai_value_score is not None:
+            breakdown.append(f"hodnota {x.ai_value_score}")
+        if x.ai_equipment_score is not None:
+            breakdown.append(f"výbava {x.ai_equipment_score}")
+        if x.ai_reliability_score is not None:
+            breakdown.append(f"spolehlivost {x.ai_reliability_score}")
+        if breakdown:
+            parts.append(" · ".join(breakdown))
+
+        for positive in (x.ai_positives or [])[:3]:
+            parts.append(f"+ {html.escape(positive)}")
+        for warning in (x.ai_warnings or [])[:3]:
+            parts.append(f"⚠️ {html.escape(warning)}")
+    elif x.match_reason and x.match_reason != "ideální rozsah":
         parts.append(html.escape(x.match_reason))
 
     if x.price is not None:

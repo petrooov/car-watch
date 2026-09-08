@@ -1,0 +1,14 @@
+Tento ZIP obsahuje jen nové/upravené soubory.
+
+1) Rozbal obsah přímo do kořene stávajícího car-watch projektu a potvrď nahrazení souborů.
+2) Soubor ai_ranker.py je NOVÝ a musí zůstat v kořeni projektu vedle main.py.
+3) Svůj existující .env NEPŘEPISUJ. Jen do něj přidej:
+   OPENAI_API_KEY=tvuj_api_klic
+4) Na GitHubu přidej Repository secret:
+   OPENAI_API_KEY
+   Telegram secrets zůstávají stejné.
+5) Lokální TOP 20:
+   source .venv/bin/activate
+   python main.py --send-all
+
+GitHub Actions dál běží 2x denně podle .github/workflows/car-watch.yml.

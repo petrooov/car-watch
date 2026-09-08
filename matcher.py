@@ -25,7 +25,16 @@ def _find_model(title: str, rules: dict) -> tuple[str | None, dict | None]:
     return None, None
 
 
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
 def evaluate(item: Listing, cfg: dict) -> MatchResult:
+    """Hard filter + levné předběžné score.
+
+    Finální score může později přepsat AI. Toto score se používá jako fallback a
+    pro zúžení kandidátů při --send-all, aby nebylo nutné posílat stovky aut do API.
+    """
     rules = cfg.get("vehicle_rules", {})
     model, rule = _find_model(item.title, rules)
     if rules and not rule:
@@ -50,42 +59,53 @@ def evaluate(item: Listing, cfg: dict) -> MatchResult:
     if item.mileage_km is not None and item.mileage_km > max_mileage:
         return MatchResult(False, model=model, reason="too many km")
 
-    # Start high and apply gentle penalties outside the ideal window.
-    score = 100
     reasons: list[str] = []
 
+    # Předběžné score je schválně rozprostřené a nemá snadno saturovat na 100.
+    # Rok: 0–30
     if item.year is None:
-        score -= 12
+        year_score = 10.0
         reasons.append("rok neznámý")
-    elif item.year < ideal_year:
-        penalty = min(18, (ideal_year - item.year) * 8)
-        score -= penalty
-        reasons.append(f"rok {item.year}")
-    elif item.year >= ideal_year + 2:
-        score += 3
+    else:
+        year_score = 18 + (item.year - ideal_year) * 4
+        year_score = _clamp(year_score, 0, 30)
+        if item.year < ideal_year:
+            reasons.append(f"rok {item.year}")
 
+    # Nájezd: 0–30
     if item.mileage_km is None:
-        score -= 12
+        mileage_score = 9.0
         reasons.append("nájezd neznámý")
-    elif item.mileage_km > ideal_mileage:
-        over = item.mileage_km - ideal_mileage
-        penalty = min(24, round(over / 5_000) * 3)
-        score -= penalty
-        reasons.append(f"{item.mileage_km // 1000} tis. km")
-    elif item.mileage_km <= 80_000:
-        score += 5
+    else:
+        mileage_score = 20 + ((ideal_mileage - item.mileage_km) / 10_000) * 2.5
+        mileage_score = _clamp(mileage_score, 0, 30)
+        if item.mileage_km > ideal_mileage:
+            reasons.append(f"{item.mileage_km // 1000} tis. km")
 
+    # Cena: 0–30. Jen předfiltr; AI dostane navíc mediány stejného modelu.
     if item.price is None:
-        score -= 15
+        price_score = 8.0
         reasons.append("cena neznámá")
-    elif item.price > ideal_price:
-        over = item.price - ideal_price
-        score -= min(15, round(over / 10_000) * 2)
-    elif item.price <= 475_000:
-        score += 5
+    else:
+        price_score = 20 + ((ideal_price - item.price) / 10_000) * 1.0
+        price_score = _clamp(price_score, 0, 30)
 
-    # Optional per-model preference bonus, e.g. for RAV4/CR-V/Outlander.
-    score += int(rule.get("bonus", 0))
-    score = max(0, min(100, score))
+    # Kompletnost dat: 0–5
+    completeness = sum(
+        value is not None
+        for value in (item.price, item.year, item.mileage_km, item.fuel, item.transmission)
+    )
+    completeness_score = completeness
 
-    return MatchResult(True, score=score, model=model, reason=", ".join(reasons) or "ideální rozsah")
+    # Preference modelu z configu: typicky 0–4 body.
+    model_bonus = int(rule.get("bonus", 0))
+
+    score = round(year_score + mileage_score + price_score + completeness_score + model_bonus)
+    score = max(0, min(99, score))  # 100 si necháváme pro opravdu výjimečný AI verdikt.
+
+    return MatchResult(
+        True,
+        score=score,
+        model=model,
+        reason=", ".join(reasons) or "ideální rozsah",
+    )
