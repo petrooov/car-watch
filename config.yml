@@ -1,0 +1,119 @@
+interval_minutes: 30
+request_timeout_seconds: 25
+user_agent: "CarWatch/0.2 (+personal listing monitor; respectful polling)"
+
+telegram:
+  enabled: true
+  bot_token_env: TELEGRAM_BOT_TOKEN
+  chat_id_env: TELEGRAM_CHAT_ID
+
+notifications:
+  new_listings: true
+  price_changes: false
+
+# Tvrdé limity + ideál pro scoring.
+filters:
+  max_price: 550000
+  min_year: 2019
+  max_mileage_km: 130000
+  ideal_year: 2020
+  ideal_mileage_km: 100000
+  ideal_price: 500000
+
+# Whitelist modelů. Starší premium auta mají vlastní výjimku.
+vehicle_rules:
+  "Toyota RAV4":
+    aliases: ["Toyota RAV4", "Toyota Rav 4", "RAV4"]
+    bonus: 4
+  "Mazda CX-5":
+    aliases: ["Mazda CX-5", "Mazda CX 5"]
+    bonus: 3
+  "Honda CR-V":
+    aliases: ["Honda CR-V", "Honda CR V"]
+    bonus: 4
+  "Mitsubishi Outlander":
+    aliases: ["Mitsubishi Outlander"]
+    bonus: 4
+  "Hyundai Tucson":
+    aliases: ["Hyundai Tucson"]
+  "Ford Kuga":
+    aliases: ["Ford Kuga"]
+  "Kia Sportage":
+    aliases: ["Kia Sportage"]
+  "Peugeot 5008":
+    aliases: ["Peugeot 5008"]
+  "Volkswagen Tiguan":
+    aliases: ["Volkswagen Tiguan", "VW Tiguan"]
+  "Škoda Kodiaq":
+    aliases: ["Škoda Kodiaq", "Skoda Kodiaq"]
+  "Renault Koleos":
+    aliases: ["Renault Koleos"]
+  "Nissan X-Trail":
+    aliases: ["Nissan X-Trail", "Nissan X Trail"]
+  "Subaru Forester":
+    aliases: ["Subaru Forester"]
+  "Volvo XC60":
+    aliases: ["Volvo XC60", "Volvo XC 60"]
+    min_year: 2018
+    max_mileage_km: 140000
+    ideal_year: 2020
+    bonus: 2
+  "Lexus NX":
+    aliases: ["Lexus NX", "Lexus NX 300h", "Lexus NX300h"]
+    min_year: 2018
+    max_mileage_km: 140000
+    ideal_year: 2020
+    bonus: 2
+
+# České hledání na Sauto. Finální filtr stejně provádí CarWatch lokálně.
+searches:
+  - {name: "Toyota RAV4", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/toyota/rav4?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Mazda CX-5", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/mazda/cx-5?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Honda CR-V", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/honda/cr-v?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Mitsubishi Outlander", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/mitsubishi/outlander?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Hyundai Tucson", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/hyundai/tucson?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Ford Kuga", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/ford/kuga?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Kia Sportage", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/kia/sportage?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Peugeot 5008", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/peugeot/5008?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Volkswagen Tiguan", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/volkswagen/tiguan?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Škoda Kodiaq", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/skoda/kodiaq?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Renault Koleos", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/renault/koleos?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Nissan X-Trail", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/nissan/x-trail?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Subaru Forester", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/subaru/forester?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Volvo XC60", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/volvo/xc60?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Lexus NX", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/lexus/nx?cena-do=550000&vyrobeno-od=2018", enabled: true}
+
+
+  # TipCars
+  - {name: "Toyota RAV4", source: tipcars, url: "https://www.tipcars.com/toyota-rav4", enabled: true}
+  - {name: "Mazda CX-5", source: tipcars, url: "https://www.tipcars.com/mazda-cx-5", enabled: true}
+  - {name: "Honda CR-V", source: tipcars, url: "https://www.tipcars.com/honda-cr-v", enabled: true}
+  - {name: "Mitsubishi Outlander", source: tipcars, url: "https://www.tipcars.com/mitsubishi-outlander", enabled: true}
+  - {name: "Hyundai Tucson", source: tipcars, url: "https://www.tipcars.com/hyundai-tucson", enabled: true}
+  - {name: "Ford Kuga", source: tipcars, url: "https://www.tipcars.com/ford-kuga", enabled: true}
+  - {name: "Kia Sportage", source: tipcars, url: "https://www.tipcars.com/kia-sportage", enabled: true}
+  - {name: "Peugeot 5008", source: tipcars, url: "https://www.tipcars.com/peugeot-5008", enabled: true}
+  - {name: "Volkswagen Tiguan", source: tipcars, url: "https://www.tipcars.com/volkswagen-tiguan", enabled: true}
+  - {name: "Škoda Kodiaq", source: tipcars, url: "https://www.tipcars.com/skoda-kodiaq", enabled: true}
+  - {name: "Renault Koleos", source: tipcars, url: "https://www.tipcars.com/renault-koleos", enabled: true}
+  - {name: "Nissan X-Trail", source: tipcars, url: "https://www.tipcars.com/nissan-x-trail", enabled: true}
+  - {name: "Subaru Forester", source: tipcars, url: "https://www.tipcars.com/subaru-forester", enabled: true}
+  - {name: "Volvo XC60", source: tipcars, url: "https://www.tipcars.com/volvo-xc60", enabled: true}
+  - {name: "Lexus NX", source: tipcars, url: "https://www.tipcars.com/lexus-nx", enabled: true}
+
+  # Bazoš Auto – dotaz na model, lokální matcher následně hlídá cenu/rok/nájezd.
+  - {name: "Toyota RAV4", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/toyota-rav4/", enabled: true}
+  - {name: "Mazda CX-5", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/mazda-cx-5/", enabled: true}
+  - {name: "Honda CR-V", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/honda-cr-v/", enabled: true}
+  - {name: "Mitsubishi Outlander", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/mitsubishi-outlander/", enabled: true}
+  - {name: "Hyundai Tucson", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/hyundai-tucson/", enabled: true}
+  - {name: "Ford Kuga", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/ford-kuga/", enabled: true}
+  - {name: "Kia Sportage", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/kia-sportage/", enabled: true}
+  - {name: "Peugeot 5008", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/peugeot-5008/", enabled: true}
+  - {name: "Volkswagen Tiguan", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/volkswagen-tiguan/", enabled: true}
+  - {name: "Škoda Kodiaq", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/skoda-kodiaq/", enabled: true}
+  - {name: "Renault Koleos", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/renault-koleos/", enabled: true}
+  - {name: "Nissan X-Trail", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/nissan-x-trail/", enabled: true}
+  - {name: "Subaru Forester", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/subaru-forester/", enabled: true}
+  - {name: "Volvo XC60", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/volvo-xc60/", enabled: true}
+  - {name: "Lexus NX", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/lexus-nx/", enabled: true}
