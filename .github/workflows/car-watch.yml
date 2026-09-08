@@ -1,0 +1,61 @@
+name: CarWatch
+
+on:
+  schedule:
+    # 07:00 a 16:00 UTC = 09:00 a 18:00 v Praze během letního času.
+    # V zimě poběží přibližně v 08:00 a 17:00.
+    - cron: "0 7,16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # GitHub runner je při každém běhu nový. Obnovíme proto SQLite databázi
+      # z předchozího běhu, aby CarWatch věděl, které inzeráty už viděl.
+      - name: Restore seen-listings database
+        id: db-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: car_watch.sqlite3
+          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            car-watch-db-${{ runner.os }}-
+
+      - name: Seed first run or check for new listings
+        shell: bash
+        run: |
+          if [ -f car_watch.sqlite3 ]; then
+            echo "Previous database restored; checking for new listings only."
+            python main.py --once
+          else
+            echo "No previous database; seeding current listings without notifications."
+            python main.py --seed
+          fi
+
+      - name: Save seen-listings database
+        if: always() && hashFiles('car_watch.sqlite3') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: car_watch.sqlite3
+          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}
