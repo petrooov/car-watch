@@ -99,6 +99,13 @@ OPENAI_API_KEY=tvuj_api_klic
 
 Na GitHubu přidej třetí Repository secret `OPENAI_API_KEY`. Pokud klíč chybí nebo API selže, CarWatch nespadne a použije lokální fallback score.
 
+Po aktualizaci kódu spusť **Actions → CarWatch → Run workflow → main**.
+Tlačítko **Re-run jobs** u staršího běhu opakuje jeho původní commit, takže
+nepoužije nově přidanou AI implementaci. Workflow předává `OPENAI_API_KEY`
+aplikaci a při chybějícím secretu zobrazí varování a poznámku v souhrnu běhu.
+Přítomnost klíče sama o sobě nepotvrzuje funkčnost API; úspěšná hodnocení
+jsou v logu označená `[AI]`, chyby jako `[WARN] AI evaluation failed`.
+
 Jednorázové poslání aktuální TOP 20:
 
 ```bash

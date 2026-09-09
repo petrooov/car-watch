@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: car-watch-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   watch:
     runs-on: ubuntu-latest
@@ -17,6 +21,7 @@ jobs:
     env:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - name: Checkout
@@ -31,6 +36,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Check AI configuration
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::warning::OPENAI_API_KEY secret is missing; listings will use fallback scores without AI summaries."
+            echo "AI unavailable: add the OPENAI_API_KEY repository secret." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "AI key is configured; API availability will be checked when evaluating new listings." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       # GitHub runner je při každém běhu nový. Obnovíme proto SQLite databázi
       # z předchozího běhu, aby CarWatch věděl, které inzeráty už viděl.
       - name: Restore seen-listings database
@@ -38,7 +53,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: car_watch.sqlite3
-          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}
+          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             car-watch-db-${{ runner.os }}-
 
@@ -58,4 +73,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: car_watch.sqlite3
-          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}
+          key: car-watch-db-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
