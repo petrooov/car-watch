@@ -41,6 +41,30 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(items[0].year, 2020)
         self.assertEqual(items[0].mileage_km, 99000)
 
+    def test_tipcars_separates_price_year_and_mileage(self):
+        html = '''<div class="advertisement">
+        <section class="advertisement-name__title"><a href="/santa-fe-123.html"><h3>Hyundai Santa Fe</h3></a><span>Luxury 4x4</span></section>
+        <div class="advertisement-name__price">548 000 Kč <span>452 893 Kč bez DPH</span></div>
+        <div title="V provozu od/Rok výroby">2019</div><div title="Tachometr">116 800 km</div>
+        <a href="/santa-fe-123.html">Foto</a></div>
+        <div class="advertisement"><a href="/santa-fe-456.html">Hyundai Santa Fe</a>
+        <div class="advertisement-name__price">699 900 Kč</div><div>2023</div><div>5 km</div></div>'''
+        items = TipCarsScraper(None).parse(html, "https://www.tipcars.com/hyundai-santa-fe")
+        self.assertEqual(len(items), 2)
+        self.assertEqual([(x.price, x.year, x.mileage_km) for x in items],
+                         [(548000, 2019, 116800), (699900, 2023, 5)])
+        self.assertIn('Luxury 4x4', items[0].title)
+
+    def test_tipcars_does_not_borrow_neighbour_price(self):
+        html = '''<main><article><a href="/first.html">Hyundai Santa Fe</a>
+        <div>2019</div><div>90 000 km</div></article>
+        <article><a href="/second.html">Kia Sorento</a><div>2020</div>
+        <div>99 000 km</div><strong>499 000 Kč</strong></article></main>'''
+        items = TipCarsScraper(None).parse(html, "https://www.tipcars.com/")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].title, 'Kia Sorento')
+        self.assertEqual(items[0].price, 499000)
+
     def test_mobile_jsonld(self):
         html = '''<script type="application/ld+json">{"@type":"ItemList","itemListElement":[{"item":{"name":"BMW 330i Touring","url":"https://suchen.mobile.de/fahrzeuge/details.html?id=987654321","offers":{"price":"28990","priceCurrency":"EUR"}}}]}</script>'''
         items = MobileDeScraper(None).parse(html, "https://suchen.mobile.de/")
