@@ -44,6 +44,10 @@ vehicle_rules:
   "Mitsubishi Outlander":
     aliases: ["Mitsubishi Outlander"]
     bonus: 4
+  "Hyundai Santa Fe":
+    aliases: ["Hyundai Santa Fe", "Hyundai SantaFe", "Hyundai Santa-Fe"]
+  "Kia Sorento":
+    aliases: ["Kia Sorento"]
   "Hyundai Tucson":
     aliases: ["Hyundai Tucson"]
   "Ford Kuga":
@@ -127,3 +131,11 @@ searches:
   - {name: "Subaru Forester", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/subaru-forester/", enabled: true}
   - {name: "Volvo XC60", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/volvo-xc60/", enabled: true}
   - {name: "Lexus NX", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/lexus-nx/", enabled: true}
+
+  # Větší SUV ve stejném cenovém limitu.
+  - {name: "Hyundai Santa Fe", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/hyundai/santa-fe?cena-do=550000&vyrobeno-od=2019", enabled: true}
+  - {name: "Hyundai Santa Fe", source: tipcars, url: "https://www.tipcars.com/hyundai-santa-fe", enabled: true}
+  - {name: "Hyundai Santa Fe", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/hyundai-santa-fe/", enabled: true}
+  - {name: "Kia Sorento", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/kia/sorento?cena-do=550000&vyrobeno-od=2019", enabled: true}
+  - {name: "Kia Sorento", source: tipcars, url: "https://www.tipcars.com/kia-sorento", enabled: true}
+  - {name: "Kia Sorento", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/kia-sorento/", enabled: true}

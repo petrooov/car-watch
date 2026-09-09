@@ -62,7 +62,7 @@ Na Macu můžeš také dvakrát kliknout na `run.command`. Při prvním spuště
 - max. cena **550 000 Kč**
 - mainstream: od 2019, ideál 2020+, max. 130 000 km
 - Volvo XC60 / Lexus NX: od 2018, max. 140 000 km
-- whitelist: RAV4, CX-5, CR-V, Outlander, Tucson, Kuga, Sportage, 5008, Tiguan, Kodiaq, Koleos, X-Trail, Forester, XC60, NX
+- whitelist: RAV4, CX-5, CR-V, Outlander, Tucson, Santa Fe, Kuga, Sportage, Sorento, 5008, Tiguan, Kodiaq, Koleos, X-Trail, Forester, XC60, NX
 - Peugeot 3008 a Škoda Karoq nejsou sledované
 
 Každá nabídka dostane score 0–100. Telegram ve výchozím nastavení posílá **jen nové odpovídající nabídky**. Změny ceny se dál evidují, ale notifikace jsou vypnuté (`notifications.price_changes: false`).
