@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from db import Database
@@ -9,7 +10,7 @@ from scrapers.mobile_de import MobileDeScraper
 from scrapers.tipcars import TipCarsScraper
 from scrapers.bazos import BazosAutoScraper
 from matcher import evaluate
-from main import should_notify
+from main import _telegram, should_notify
 from db import Change
 
 
@@ -112,6 +113,49 @@ class ParserTests(unittest.TestCase):
         cfg = {"notifications": {"new_listings": True, "price_changes": False}}
         self.assertTrue(should_notify(Change("new", item), cfg))
         self.assertFalse(should_notify(Change("price_change", item, 520000), cfg))
+
+    @patch("notifier.httpx.post")
+    def test_telegram_sends_to_both_configured_chats(self, post):
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"ok": True}
+        cfg = {
+            "telegram": {
+                "enabled": True,
+                "recipients": [
+                    {"name": "first", "bot_token_env": "BOT_1", "chat_id_env": "CHAT_1"},
+                    {"name": "second", "bot_token_env": "BOT_2", "chat_id_env": "CHAT_2", "optional": True},
+                ],
+            }
+        }
+        item = Listing("sauto", "1", "https://x/1", "Toyota RAV4")
+
+        with patch.dict("os.environ", {"BOT_1": "token-1", "CHAT_1": "chat-1", "BOT_2": "token-2", "CHAT_2": "chat-2"}):
+            _telegram(cfg).send(Change("new", item))
+
+        self.assertEqual(post.call_count, 2)
+        self.assertIn("bottoken-1/sendMessage", post.call_args_list[0].args[0])
+        self.assertEqual(post.call_args_list[0].kwargs["json"]["chat_id"], "chat-1")
+        self.assertIn("bottoken-2/sendMessage", post.call_args_list[1].args[0])
+        self.assertEqual(post.call_args_list[1].kwargs["json"]["chat_id"], "chat-2")
+
+    @patch("notifier.httpx.post")
+    def test_optional_second_telegram_chat_can_be_empty(self, post):
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"ok": True}
+        cfg = {
+            "telegram": {
+                "enabled": True,
+                "recipients": [
+                    {"name": "first", "bot_token_env": "BOT_1", "chat_id_env": "CHAT_1"},
+                    {"name": "second", "bot_token_env": "BOT_2", "chat_id_env": "CHAT_2", "optional": True},
+                ],
+            }
+        }
+
+        with patch.dict("os.environ", {"BOT_1": "token-1", "CHAT_1": "chat-1"}, clear=True):
+            _telegram(cfg).send_test()
+
+        self.assertEqual(post.call_count, 1)
 
 
 if __name__ == "__main__":

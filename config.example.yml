@@ -4,8 +4,14 @@ user_agent: "CarWatch/0.2 (+personal listing monitor; respectful polling)"
 
 telegram:
   enabled: false
-  bot_token_env: TELEGRAM_BOT_TOKEN
-  chat_id_env: TELEGRAM_CHAT_ID
+  recipients:
+    - name: hlavni-chat
+      bot_token_env: TELEGRAM_BOT_TOKEN
+      chat_id_env: TELEGRAM_CHAT_ID
+    - name: druhy-chat
+      bot_token_env: TELEGRAM_BOT_TOKEN_2
+      chat_id_env: TELEGRAM_CHAT_ID_2
+      optional: true
 
 notifications:
   new_listings: true

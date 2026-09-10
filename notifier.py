@@ -72,17 +72,44 @@ def format_change(change: Change) -> str:
 
 
 class TelegramNotifier:
-    def __init__(self, bot_token_env: str = "TELEGRAM_BOT_TOKEN", chat_id_env: str = "TELEGRAM_CHAT_ID"):
-        self.token = os.getenv(bot_token_env)
-        self.chat_id = os.getenv(chat_id_env)
-        if not self.token or not self.chat_id:
-            raise RuntimeError(
-                f"Chybí {bot_token_env} nebo {chat_id_env}. "
-                "Zkopíruj .env.example na .env a doplň obě hodnoty."
-            )
+    def __init__(
+        self,
+        bot_token_env: str = "TELEGRAM_BOT_TOKEN",
+        chat_id_env: str = "TELEGRAM_CHAT_ID",
+        recipients: list[dict] | None = None,
+    ):
+        recipient_configs = recipients or [{
+            "name": "hlavni",
+            "bot_token_env": bot_token_env,
+            "chat_id_env": chat_id_env,
+        }]
+        self.recipients: list[tuple[str, str, str]] = []
 
-    def _post(self, payload: dict) -> dict:
-        url = f"https://api.telegram.org/bot{self.token}/sendMessage"
+        for recipient in recipient_configs:
+            if not recipient.get("enabled", True):
+                continue
+
+            name = recipient.get("name", "telegram")
+            token_env = recipient.get("bot_token_env", "TELEGRAM_BOT_TOKEN")
+            chat_env = recipient.get("chat_id_env", "TELEGRAM_CHAT_ID")
+            token = os.getenv(token_env)
+            chat_id = os.getenv(chat_env)
+
+            # Volitelný druhý příjemce se aktivuje až doplněním obou hodnot.
+            if recipient.get("optional", False) and not token and not chat_id:
+                continue
+            if not token or not chat_id:
+                raise RuntimeError(
+                    f"Příjemce '{name}': chybí {token_env} nebo {chat_env}. "
+                    "Doplň obě hodnoty do .env / GitHub Actions secrets."
+                )
+            self.recipients.append((token, chat_id, name))
+
+        if not self.recipients:
+            raise RuntimeError("Není nakonfigurovaný žádný Telegram příjemce.")
+
+    def _post(self, token: str, payload: dict) -> dict:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
         r = httpx.post(url, json=payload, timeout=20)
         r.raise_for_status()
         data = r.json()
@@ -91,15 +118,17 @@ class TelegramNotifier:
         return data
 
     def send(self, change: Change) -> None:
-        self._post({
-            "chat_id": self.chat_id,
-            "text": format_change(change),
-            "parse_mode": "HTML",
-            "disable_web_page_preview": False,
-        })
+        for token, chat_id, _name in self.recipients:
+            self._post(token, {
+                "chat_id": chat_id,
+                "text": format_change(change),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False,
+            })
 
     def send_test(self) -> None:
-        self._post({
-            "chat_id": self.chat_id,
-            "text": "✅ CarWatch je připojený. Telegram upozornění fungují.",
-        })
+        for token, chat_id, name in self.recipients:
+            self._post(token, {
+                "chat_id": chat_id,
+                "text": f"✅ CarWatch je připojený ({name}). Telegram upozornění fungují.",
+            })

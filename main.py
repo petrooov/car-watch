@@ -29,13 +29,14 @@ def should_notify(change, config: dict) -> bool:
     return False
 
 
-def _telegram(config: dict) -> TelegramNotifier | None:
+def _telegram(config: dict, require_enabled: bool = True) -> TelegramNotifier | None:
     telegram_cfg = config.get("telegram", {})
-    if not telegram_cfg.get("enabled"):
+    if require_enabled and not telegram_cfg.get("enabled"):
         return None
     return TelegramNotifier(
         telegram_cfg.get("bot_token_env", "TELEGRAM_BOT_TOKEN"),
         telegram_cfg.get("chat_id_env", "TELEGRAM_CHAT_ID"),
+        telegram_cfg.get("recipients"),
     )
 
 
@@ -194,12 +195,10 @@ def main() -> None:
     db = Database(args.db)
 
     if args.test_telegram:
-        telegram_cfg = config.get("telegram", {})
-        TelegramNotifier(
-            telegram_cfg.get("bot_token_env", "TELEGRAM_BOT_TOKEN"),
-            telegram_cfg.get("chat_id_env", "TELEGRAM_CHAT_ID"),
-        ).send_test()
-        print("[OK] Testovací zpráva odeslána na Telegram.")
+        notifier = _telegram(config, require_enabled=False)
+        assert notifier is not None
+        notifier.send_test()
+        print("[OK] Testovací zpráva odeslána všem Telegram příjemcům.")
         return
 
     if args.send_all:
