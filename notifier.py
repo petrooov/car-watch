@@ -117,17 +117,32 @@ class TelegramNotifier:
             raise RuntimeError(f"Telegram API error: {data}")
         return data
 
-    def send(self, change: Change) -> None:
-        for token, chat_id, _name in self.recipients:
+    def send(self, change: Change, recipient_name: str | None = None) -> None:
+        recipients = [
+            recipient for recipient in self.recipients
+            if recipient_name is None or recipient[2] == recipient_name
+        ]
+        if not recipients:
+            raise RuntimeError(f"Telegram příjemce '{recipient_name}' není aktivní nebo nemá vyplněné údaje.")
+
+        text = format_change(change)
+        for token, chat_id, _name in recipients:
             self._post(token, {
                 "chat_id": chat_id,
-                "text": format_change(change),
+                "text": text,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": False,
             })
 
-    def send_test(self) -> None:
-        for token, chat_id, name in self.recipients:
+    def send_test(self, recipient_name: str | None = None) -> None:
+        recipients = [
+            recipient for recipient in self.recipients
+            if recipient_name is None or recipient[2] == recipient_name
+        ]
+        if not recipients:
+            raise RuntimeError(f"Telegram příjemce '{recipient_name}' není aktivní nebo nemá vyplněné údaje.")
+
+        for token, chat_id, name in recipients:
             self._post(token, {
                 "chat_id": chat_id,
                 "text": f"✅ CarWatch je připojený ({name}). Telegram upozornění fungují.",

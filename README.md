@@ -30,6 +30,17 @@ token jako u prvního bota. Druhý příjemce je volitelný a bez obou hodnot se
 ignoruje. Samostatné bot ID se nikam nezadává: bota určuje jeho token a cílovou
 konverzaci určuje chat ID.
 
+Chceš-li novému chatu jednorázově poslat poslední neprázdnou dávku nalezenou v
+databázi, použij:
+
+```bash
+python main.py --resend-latest-to druhy-chat
+```
+
+Pokud hlídač běží na GitHubu, otevři **Actions → CarWatch → Run workflow** a u
+volby **Znovu poslat poslední nalezenou dávku** vyber `druhy-chat`. Tento režim
+nespouští nové hledání a neposílá dávku znovu do hlavního chatu.
+
 ### Ověření Telegramu
 
 Na Macu můžeš dvakrát kliknout na `test-telegram.command`, nebo v Terminálu:

@@ -188,11 +188,29 @@ def main() -> None:
         action="store_true",
         help="AI-rank current matches and send TOP N (default 20) to Telegram",
     )
+    parser.add_argument(
+        "--resend-latest-to",
+        metavar="RECIPIENT",
+        help="send the latest non-empty database batch only to this Telegram recipient",
+    )
     args = parser.parse_args()
 
     load_dotenv()
     config = load_config(args.config)
     db = Database(args.db)
+
+    if args.resend_latest_to:
+        notifier = _telegram(config, require_enabled=False)
+        assert notifier is not None
+        items = db.latest_new_listings()
+        if not items:
+            print("[WARN] Databáze neobsahuje žádné dříve nalezené inzeráty.")
+            return
+        for item in items:
+            notifier.send(Change("new", item), recipient_name=args.resend_latest_to)
+            time.sleep(0.15)
+        print(f"[OK] Odesláno {len(items)} inzerátů příjemci '{args.resend_latest_to}'.")
+        return
 
     if args.test_telegram:
         notifier = _telegram(config, require_enabled=False)

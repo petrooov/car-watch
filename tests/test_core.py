@@ -83,6 +83,27 @@ class ParserTests(unittest.TestCase):
             self.assertEqual(ch.kind, "price_change")
             self.assertEqual(ch.old_price, 100)
 
+    def test_database_returns_only_latest_new_batch(self):
+        with tempfile.TemporaryDirectory() as d:
+            db = Database(str(Path(d) / "test.sqlite3"))
+            rows = [
+                ("old", "2026-09-10T08:00:00+00:00", 50),
+                ("new-1", "2026-09-10T10:00:00+00:00", 80),
+                ("new-2", "2026-09-10T10:00:20+00:00", 90),
+            ]
+            for external_id, first_seen, score in rows:
+                db.conn.execute(
+                    """INSERT INTO listings (
+                        external_id, source, url, title, score, first_seen, last_seen
+                    ) VALUES (?, 'sauto', ?, ?, ?, ?, ?)""",
+                    (external_id, f"https://x/{external_id}", external_id, score, first_seen, first_seen),
+                )
+            db.conn.commit()
+
+            latest = db.latest_new_listings()
+
+            self.assertEqual([item.external_id for item in latest], ["new-2", "new-1"])
+
     def test_vehicle_filter_and_scoring(self):
         cfg = {
             "filters": {
@@ -137,6 +158,12 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(post.call_args_list[0].kwargs["json"]["chat_id"], "chat-1")
         self.assertIn("bottoken-2/sendMessage", post.call_args_list[1].args[0])
         self.assertEqual(post.call_args_list[1].kwargs["json"]["chat_id"], "chat-2")
+
+        post.reset_mock()
+        with patch.dict("os.environ", {"BOT_1": "token-1", "CHAT_1": "chat-1", "BOT_2": "token-2", "CHAT_2": "chat-2"}):
+            _telegram(cfg).send(Change("new", item), recipient_name="second")
+        self.assertEqual(post.call_count, 1)
+        self.assertEqual(post.call_args.kwargs["json"]["chat_id"], "chat-2")
 
     @patch("notifier.httpx.post")
     def test_optional_second_telegram_chat_can_be_empty(self, post):

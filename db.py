@@ -105,3 +105,32 @@ class Database:
 
         self.conn.commit()
         return None
+
+    def latest_new_listings(self, batch_window_seconds: int = 60) -> list[Listing]:
+        """Return the newest burst of first-seen listings from the database."""
+        newest = self.conn.execute(
+            "SELECT MAX(first_seen) AS newest FROM listings"
+        ).fetchone()["newest"]
+        if newest is None:
+            return []
+
+        rows = self.conn.execute(
+            """
+            SELECT * FROM listings
+            WHERE julianday(first_seen) >= julianday(?) - (? / 86400.0)
+            ORDER BY score DESC, first_seen ASC
+            """,
+            (newest, max(1, int(batch_window_seconds))),
+        ).fetchall()
+        return [
+            Listing(
+                source=row["source"], external_id=row["external_id"],
+                url=row["url"], title=row["title"], price=row["price"],
+                currency=row["currency"], year=row["year"],
+                mileage_km=row["mileage_km"], fuel=row["fuel"],
+                transmission=row["transmission"], location=row["location"],
+                image_url=row["image_url"], model=row["model"],
+                score=row["score"], match_reason=row["match_reason"],
+            )
+            for row in rows
+        ]

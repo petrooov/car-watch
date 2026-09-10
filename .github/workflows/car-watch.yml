@@ -6,6 +6,15 @@ on:
     # V zimě poběží přibližně v 08:00 a 17:00.
     - cron: "0 7,16 * * *"
   workflow_dispatch:
+    inputs:
+      resend_latest_to:
+        description: "Znovu poslat poslední nalezenou dávku"
+        required: false
+        default: "none"
+        type: choice
+        options:
+          - "none"
+          - "druhy-chat"
 
 permissions:
   contents: read
@@ -62,7 +71,10 @@ jobs:
       - name: Seed first run or check for new listings
         shell: bash
         run: |
-          if [ -f car_watch.sqlite3 ]; then
+          if [ -f car_watch.sqlite3 ] && [ "${{ inputs.resend_latest_to }}" = "druhy-chat" ]; then
+            echo "Resending the latest non-empty batch to the second Telegram chat only."
+            python main.py --resend-latest-to druhy-chat
+          elif [ -f car_watch.sqlite3 ]; then
             echo "Previous database restored; checking for new listings only."
             python main.py --once
           else
