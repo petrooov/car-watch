@@ -109,6 +109,8 @@ class ParserTests(unittest.TestCase):
             "filters": {
                 "max_price": 550000, "min_year": 2019, "max_mileage_km": 130000,
                 "ideal_year": 2020, "ideal_mileage_km": 100000, "ideal_price": 500000,
+                "excluded_fuels": ["nafta", "diesel"],
+                "excluded_transmissions": ["manuální", "manuál", "manual"],
             },
             "vehicle_rules": {
                 "Toyota RAV4": {"aliases": ["Toyota RAV4"]},
@@ -126,6 +128,16 @@ class ParserTests(unittest.TestCase):
 
         old_mainstream = Listing("sauto", "4", "https://x/4", "Toyota RAV4", price=450000, currency="CZK", year=2018, mileage_km=90000)
         self.assertFalse(evaluate(old_mainstream, cfg).accepted)
+
+        diesel = Listing("sauto", "5", "https://x/5", "Toyota RAV4 2.0 D-4D", price=450000, currency="CZK", year=2020, mileage_km=90000, fuel="Nafta")
+        result = evaluate(diesel, cfg)
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reason, "excluded fuel Nafta")
+
+        manual = Listing("sauto", "6", "https://x/6", "Toyota RAV4 2.5 Hybrid", price=450000, currency="CZK", year=2020, mileage_km=90000, fuel="Hybridní", transmission="Manuální")
+        result = evaluate(manual, cfg)
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reason, "excluded transmission Manuální")
 
     def test_only_new_listings_are_notified_by_default(self):
         item = Listing("sauto", "sauto:1", "https://x/1", "Toyota RAV4", price=500000, currency="CZK")

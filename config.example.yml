@@ -19,6 +19,8 @@ notifications:
 
 # Tvrdé limity + ideál pro scoring.
 filters:
+  excluded_fuels: ["nafta", "diesel"]
+  excluded_transmissions: ["manuální", "manuál", "manual"]
   max_price: 550000
   min_year: 2019
   max_mileage_km: 130000

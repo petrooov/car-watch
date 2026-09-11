@@ -43,6 +43,23 @@ def evaluate(item: Listing, cfg: dict) -> MatchResult:
     rule = rule or {}
     defaults = cfg.get("filters", {})
 
+    excluded_fuels = {
+        _norm(str(fuel)) for fuel in defaults.get("excluded_fuels", [])
+    }
+    if item.fuel and _norm(item.fuel) in excluded_fuels:
+        return MatchResult(False, model=model, reason=f"excluded fuel {item.fuel}")
+
+    excluded_transmissions = {
+        _norm(str(transmission))
+        for transmission in defaults.get("excluded_transmissions", [])
+    }
+    if item.transmission and _norm(item.transmission) in excluded_transmissions:
+        return MatchResult(
+            False,
+            model=model,
+            reason=f"excluded transmission {item.transmission}",
+        )
+
     max_price = int(rule.get("max_price", defaults.get("max_price", 550_000)))
     min_year = int(rule.get("min_year", defaults.get("min_year", 2019)))
     max_mileage = int(rule.get("max_mileage_km", defaults.get("max_mileage_km", 130_000)))
