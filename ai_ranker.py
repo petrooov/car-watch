@@ -82,7 +82,6 @@ Profil kupujícího:
 - maximální rozpočet 550 000 Kč
 - chce SUV zhruba velikosti Toyota RAV4
 - roční nájezd přibližně 20 000 km, kombinace město + dálnice
-- 4x4 není potřeba
 - důležité jsou spolehlivost, rozumné provozní náklady, praktičnost a dobrá výbava
 - rok ideálně 2020+, nájezd ideálně kolem 100 000 km nebo méně
 
