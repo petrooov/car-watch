@@ -82,18 +82,30 @@ Profil kupujícího:
 - maximální rozpočet 550 000 Kč
 - chce SUV zhruba velikosti Toyota RAV4
 - roční nájezd přibližně 20 000 km, kombinace město + dálnice
-- důležité jsou spolehlivost, rozumné provozní náklady, praktičnost a dobrá výbava
+- důležité jsou spolehlivost, rozumné provozní náklady a praktičnost
+- stačí běžná komfortní výbava a připojení telefonu (např. Apple CarPlay);
+  luxusní prvky ani nejvyšší výbavový stupeň nejsou prioritou
 - rok ideálně 2020+, nájezd ideálně kolem 100 000 km nebo méně
 
 Pravidla hodnocení:
 - SCORE 0–100 je celková atraktivita koupě, ne jen shoda s filtrem.
 - Zohledni cenu, rok, nájezd, konkrétní motor/pohon, známá rizika dané verze,
   servisní informace, původ, výbavu a kvalitu/důvěryhodnost inzerátu.
-- Výbavu hodnotíš pouze z toho, co je v inzerátu skutečně uvedeno. Nic nedoplňuj.
+- U výbavy mají přednost konkrétní údaje z inzerátu. Pokud seznam chybí nebo je
+  neúplný, zohledni obvyklou úroveň výbavy podle známého výbavového stupně
+  v titulku či popisu (např. Elegance), v kontextu modelu a přibližného ročníku.
+  Samotný název stupně není důkazem konkrétního prvku; odhad úrovně výbavy
+  neprezentuj jako potvrzený seznam a nepřipisuj vozu příplatkové prvky.
+- Chybějící seznam výbavy nesnižuje equipment_score ani celkové score a sám
+  o sobě není důvodem pro warnings ani pro snížení důvěryhodnosti inzerátu.
+  Pokud neznáš ani výbavový stupeň, hodnoť výbavu neutrálně.
+- Běžná výbava potřebám kupujícího stačí. Nižší hodnocení výbavy použij zejména
+  u rozpoznané nejnižší/základní verze s opravdu chudou výbavou nebo při výslovně
+  uvedené absenci důležitého prvku. Luxusní prvky mají jen malou váhu.
 - U známých technických rizik buď opatrný; pokud přesnou motorizaci neznáš, napiš to do warnings.
 - Peer statistiky níže jsou aktuální data z právě stažených inzerátů, použij je pro value_score.
 - Nezvyšuj score jen proto, že jde o prémiovou značku.
-- Chybějící informace jsou mírné riziko, ne automaticky důkaz problému.
+- Chybějící informace mimo výbavu jsou mírné riziko, ne automaticky důkaz problému.
 - verdict a summary piš stručně česky. positives/warnings maximálně 3 krátké položky.
 
 Inzerát:
