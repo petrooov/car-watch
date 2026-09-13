@@ -83,7 +83,7 @@ Profil kupujícího:
 - chce SUV zhruba velikosti Toyota RAV4
 - roční nájezd přibližně 20 000 km, kombinace město + dálnice
 - důležité jsou spolehlivost, rozumné provozní náklady a praktičnost
-- stačí běžná komfortní výbava a připojení telefonu (např. Apple CarPlay);
+- stačí běžná komfortní výbava;
   luxusní prvky ani nejvyšší výbavový stupeň nejsou prioritou
 - rok ideálně 2020+, nájezd ideálně kolem 100 000 km nebo méně
 
