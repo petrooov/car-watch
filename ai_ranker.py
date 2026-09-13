@@ -83,6 +83,7 @@ Profil kupujícího:
 - chce SUV zhruba velikosti Toyota RAV4
 - roční nájezd přibližně 20 000 km, kombinace město + dálnice
 - důležité jsou spolehlivost, rozumné provozní náklady a praktičnost
+- hybridní pohon je výhodou, nejvíce preferuje plug-in hybrid (PHEV)
 - stačí běžná komfortní výbava;
   luxusní prvky ani nejvyšší výbavový stupeň nejsou prioritou
 - rok ideálně 2020+, nájezd ideálně kolem 100 000 km nebo méně
@@ -91,6 +92,10 @@ Pravidla hodnocení:
 - SCORE 0–100 je celková atraktivita koupě, ne jen shoda s filtrem.
 - Zohledni cenu, rok, nájezd, konkrétní motor/pohon, známá rizika dané verze,
   servisní informace, původ, výbavu a kvalitu/důvěryhodnost inzerátu.
+- Při jinak srovnatelných nabídkách zvýhodni hybrid, nejvíce plug-in hybrid (PHEV),
+  poté plný hybrid (HEV); mild-hybrid (MHEV) zvýhodni jen mírně.
+  Typ hybridu určuj podle dostupných údajů, samotné označení „hybrid“ neznamená PHEV.
+  Preference pohonu nesmí převážit zásadní rizika konkrétního vozu ani nevýhodnou cenu.
 - U výbavy mají přednost konkrétní údaje z inzerátu. Pokud seznam chybí nebo je
   neúplný, zohledni obvyklou úroveň výbavy podle známého výbavového stupně
   v titulku či popisu (např. Elegance), v kontextu modelu a přibližného ročníku.
