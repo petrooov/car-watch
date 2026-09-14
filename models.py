@@ -35,5 +35,12 @@ class Listing:
     ai_positives: Optional[list[str]] = None
     ai_warnings: Optional[list[str]] = None
 
+    # Identita fyzické nabídky napříč agregátory. Carvago například
+    # zveřejňuje ID původního inzerátu z mobile.de. Alternativní odkazy se
+    # zobrazí v jedné notifikaci místo odeslání duplikátu.
+    canonical_id: Optional[str] = None
+    vin: Optional[str] = None
+    alternative_urls: Optional[list[tuple[str, str]]] = None
+
     def as_dict(self) -> dict:
         return asdict(self)

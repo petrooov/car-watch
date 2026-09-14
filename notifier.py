@@ -14,6 +14,7 @@ def format_change(change: Change) -> str:
         "tipcars": "TipCars",
         "bazos_auto": "Bazoš Auto",
         "mobile_de": "mobile.de",
+        "carvago": "Carvago",
     }
     kind = "🆕 NOVÝ INZERÁT" if change.kind == "new" else "💸 ZMĚNA CENY"
     parts = [
@@ -68,6 +69,11 @@ def format_change(change: Change) -> str:
             parts.append(f"💰 <b>{price} {currency}</b>")
 
     parts.append(f'<a href="{html.escape(x.url, quote=True)}">Otevřít inzerát</a>')
+    for source, url in (x.alternative_urls or []):
+        label = source_names.get(source, source)
+        parts.append(
+            f'<a href="{html.escape(url, quote=True)}">Také na {html.escape(label)}</a>'
+        )
     return "\n".join(parts)
 
 

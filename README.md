@@ -1,6 +1,6 @@
 # CarWatch
 
-Hlídač ojetých SUV pro **Sauto + TipCars + Bazoš Auto**. Ukládá nabídky do SQLite, filtruje je podle modelu/ceny/roku/nájezdu, počítá score a posílá na Telegram pouze nové odpovídající inzeráty. Změny ceny si ukládá do databáze, ale ve výchozím nastavení je neposílá.
+Hlídač ojetých SUV pro **Sauto + TipCars + Bazoš Auto + Carvago**. Ukládá nabídky do SQLite, filtruje je podle modelu/ceny/roku/nájezdu, počítá score a posílá na Telegram pouze nové odpovídající inzeráty. Změny ceny si ukládá do databáze, ale ve výchozím nastavení je neposílá.
 
 ## 1. Telegram – první nastavení
 
@@ -96,7 +96,13 @@ Každá nabídka dostane score 0–100. Telegram ve výchozím nastavení posíl
 
 ## Poznámky ke zdrojům
 
-Scrapery používají veřejné výsledkové stránky a záměrně nepoužívají obcházení přihlášení, CAPTCHA ani anti-bot ochrany. Bazoš obsahuje hodně dílů a příslušenství, proto jeho parser přijímá jen inzeráty, kde zároveň rozpozná cenu, rok a nájezd. Weby mohou časem měnit HTML; každý zdroj je proto samostatný adaptér v `scrapers/`.
+Scrapery používají veřejné výsledkové stránky a záměrně nepoužívají obcházení přihlášení, CAPTCHA ani anti-bot ochrany. Bazoš obsahuje hodně dílů a příslušenství, proto jeho parser přijímá jen inzeráty, kde zároveň rozpozná cenu, rok a nájezd. Carvago parser používá strukturovaná data vložená ve stránce a má HTML fallback.
+
+Nabídky se deduplikují i napříč zdroji. Přednost má původní ID inzerátu zveřejněné agregátorem, potom VIN a nakonec konzervativní porovnání modelu, roku, nájezdu, ceny a titulku. Jistá shoda vytvoří jednu notifikaci s alternativními odkazy. Weby mohou časem měnit HTML; každý zdroj je proto samostatný adaptér v `scrapers/`.
+
+První úspěšné načtení nově přidaného zdroje se automaticky uloží bez
+notifikací a bez AI hodnocení. Tím přidání Carvago nezpůsobí jednorázovou
+záplavu starších inzerátů; další běhy už hlásí pouze nové kusy.
 
 
 ## GitHub Actions – běh bez zapnutého Macu

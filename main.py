@@ -13,6 +13,7 @@ from notifier import TelegramNotifier, format_change
 from matcher import evaluate
 from models import Listing
 from scrapers import SCRAPERS
+from dedupe import add_alternative, identity_key, is_probable_duplicate
 
 
 def load_config(path: str) -> dict:
@@ -83,6 +84,13 @@ def run_once(
     # dostupnými kusy stejného modelu.
     accepted_items: dict[str, Listing] = {}
     scraper_instances: dict[str, object] = {}
+    seed_sources = {
+        search["source"]
+        for search in config.get("searches", [])
+        if search.get("enabled", True) and not db.source_is_initialized(search["source"])
+    }
+    successfully_scraped_sources: set[str] = set()
+    failed_sources: set[str] = set()
 
     with httpx.Client(timeout=timeout, headers=headers) as client:
         for search in config.get("searches", []):
@@ -102,8 +110,10 @@ def run_once(
 
             try:
                 listings = scraper.scrape(search["url"])
+                successfully_scraped_sources.add(source)
                 print(f"[{source}] {search.get('name', '')}: {len(listings)} listings")
             except Exception as exc:
+                failed_sources.add(source)
                 print(f"[ERROR] {source}: {exc}")
                 continue
 
@@ -118,10 +128,24 @@ def run_once(
                 item.score = match.score
                 item.match_reason = match.reason
 
-                key = f"{item.source}:{item.external_id}"
+                key = identity_key(item)
                 existing = accepted_items.get(key)
+                existing_key = key
+                if existing is None:
+                    duplicate = next(
+                        ((candidate_key, candidate) for candidate_key, candidate in accepted_items.items()
+                         if is_probable_duplicate(candidate, item)),
+                        None,
+                    )
+                    if duplicate:
+                        existing_key, existing = duplicate
                 if existing is None or (item.score or 0) > (existing.score or 0):
+                    if existing is not None:
+                        add_alternative(item, existing)
+                        accepted_items.pop(existing_key, None)
                     accepted_items[key] = item
+                elif existing is not None:
+                    add_alternative(existing, item)
 
             print(f"[{source}] {search.get('name', '')}: {accepted} matched filters")
 
@@ -131,8 +155,15 @@ def run_once(
         # Uložíme všechny nalezené kusy a zjistíme, které jsou nové.
         for item in all_items:
             change = db.upsert(item)
-            if change:
+            if change and not (change.kind == "new" and item.source in seed_sources):
                 changes.append(change)
+
+        fully_scraped_sources = successfully_scraped_sources - failed_sources
+        for source in fully_scraped_sources:
+            db.mark_source_initialized(source)
+        for source in sorted(seed_sources & fully_scraped_sources):
+            seeded = sum(item.source == source for item in all_items)
+            print(f"[{source}] first successful run: seeded {seeded} listings without notifications")
 
         if send_all:
             ai_cfg = config.get("ai", {})

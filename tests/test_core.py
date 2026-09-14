@@ -9,8 +9,11 @@ from scrapers.sauto import SautoScraper
 from scrapers.mobile_de import MobileDeScraper
 from scrapers.tipcars import TipCarsScraper
 from scrapers.bazos import BazosAutoScraper
+from scrapers.carvago import CarvagoScraper
+from dedupe import is_probable_duplicate
 from matcher import evaluate
-from main import _telegram, should_notify
+from main import _telegram, run_once, should_notify
+from scrapers import SCRAPERS
 from db import Change
 from utils import detect_fuel
 
@@ -79,6 +82,58 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].price, 28990)
 
+    def test_carvago_next_data_and_original_identity(self):
+        html = '''<script id="__NEXT_DATA__" type="application/json">{
+          "props":{"pageProps":{"searchResults":{"cars":[{
+            "id":"87033559","slug":"toyota-rav-4-2-5-team-145-kw",
+            "title":"Toyota RAV 4 2.5 Team 145 kW","price":472990,
+            "price_currency":{"name":"CZK"},"registration_date":"2019-01-01",
+            "mileage":128237,"source_name":"mobile_de",
+            "external_id":"mobile_de-123456789","vin":"JT123",
+            "location_country":{"name":"Německo"},"main_image":"https://img/1.jpg",
+            "catalog_features":[
+              {"const_key":"FUELTYPE_HYBRID","label":"Hybrid"},
+              {"const_key":"TRANSMISSION_AUTOMATIC","label":"Automat"},
+              {"const_key":"FEATURE_CRUISECONTROL_ADAPTIVE","label":"Adaptivní tempomat"}
+            ]
+          }]}}}}</script>'''
+        items = CarvagoScraper(None).parse(html, "https://carvago.com/cs/auta/toyota/rav4")
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item.external_id, "carvago:87033559")
+        self.assertEqual(item.canonical_id, "mobile_de:123456789")
+        self.assertEqual((item.price, item.year, item.mileage_km), (472990, 2019, 128237))
+        self.assertEqual((item.fuel, item.transmission), ("Hybridní", "Automat"))
+        self.assertIn("Adaptivní tempomat", item.equipment_text)
+
+    def test_cross_source_dedupe_exact_and_conservative_fallback(self):
+        direct = Listing(
+            "mobile_de", "mobile_de:123", "https://mobile/123", "Toyota RAV4 2.5 Hybrid 160 kW",
+            price=500000, currency="CZK", year=2020, mileage_km=80000,
+            fuel="Hybrid", transmission="Automat", model="Toyota RAV4",
+        )
+        aggregator = Listing(
+            "carvago", "carvago:999", "https://carvago/999", "Toyota RAV 4 2.5 Hybrid 160 kW",
+            price=530000, currency="CZK", year=2020, mileage_km=80000,
+            fuel="Hybrid", transmission="Automat", model="Toyota RAV4",
+            canonical_id="mobile_de:123",
+        )
+        self.assertTrue(is_probable_duplicate(direct, aggregator))
+
+        fallback = Listing(
+            "carvago", "carvago:997", "https://carvago/997", "Toyota RAV 4 2.5 Hybrid 160 kW",
+            price=530000, currency="CZK", year=2020, mileage_km=80005,
+            fuel="Hybridní", transmission="Automatická", model="Toyota RAV4",
+        )
+        self.assertTrue(is_probable_duplicate(direct, fallback))
+
+        different_car = Listing(
+            "carvago", "carvago:998", "https://carvago/998", "Toyota RAV 4 2.5 Hybrid 160 kW",
+            price=530000, currency="CZK", year=2020, mileage_km=86000,
+            fuel="Hybrid", transmission="Automat", model="Toyota RAV4",
+        )
+        self.assertFalse(is_probable_duplicate(direct, different_car))
+
     def test_database_changes(self):
         with tempfile.TemporaryDirectory() as d:
             db = Database(str(Path(d) / "test.sqlite3"))
@@ -89,6 +144,77 @@ class ParserTests(unittest.TestCase):
             ch = db.upsert(b)
             self.assertEqual(ch.kind, "price_change")
             self.assertEqual(ch.old_price, 100)
+            db.conn.close()
+
+    def test_database_suppresses_cross_source_duplicate(self):
+        with tempfile.TemporaryDirectory() as d:
+            db = Database(str(Path(d) / "test.sqlite3"))
+            direct = Listing(
+                "mobile_de", "mobile_de:123", "https://mobile/123", "Toyota RAV4 Hybrid",
+                price=500000, currency="CZK", year=2020, mileage_km=80000,
+                model="Toyota RAV4",
+            )
+            duplicate = Listing(
+                "carvago", "carvago:999", "https://carvago/999", "Toyota RAV4 Hybrid",
+                price=525000, currency="CZK", year=2020, mileage_km=80000,
+                model="Toyota RAV4", canonical_id="mobile_de:123",
+            )
+            self.assertEqual(db.upsert(direct).kind, "new")
+            self.assertIsNone(db.upsert(duplicate))
+            row = db.conn.execute(
+                "SELECT alternative_urls FROM listings WHERE external_id='mobile_de:123'"
+            ).fetchone()
+            self.assertIn("https://carvago/999", row["alternative_urls"])
+            db.conn.close()
+
+    def test_partial_new_source_stays_uninitialized_after_reopen(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = str(Path(d) / "test.sqlite3")
+            db = Database(path)
+            db.upsert(Listing("partial", "partial:1", "https://x/1", "Car"))
+            self.assertFalse(db.source_is_initialized("partial"))
+            db.conn.close()
+
+            reopened = Database(path)
+            self.assertFalse(reopened.source_is_initialized("partial"))
+            reopened.conn.close()
+
+    def test_new_source_is_seeded_silently_then_notifies(self):
+        class FakeScraper:
+            items = [Listing(
+                "new_source", "new_source:1", "https://x/1", "Toyota RAV4 Hybrid",
+                price=500000, currency="CZK", year=2020, mileage_km=80000,
+                fuel="Hybrid", transmission="Automat",
+            )]
+
+            def __init__(self, client):
+                pass
+
+            def scrape(self, url):
+                return list(self.items)
+
+            def enrich(self, item, max_chars=14000):
+                return item
+
+        cfg = {
+            "telegram": {"enabled": False},
+            "ai": {"enabled": False},
+            "filters": {"max_price": 550000, "min_year": 2019, "max_mileage_km": 130000},
+            "vehicle_rules": {"Toyota RAV4": {"aliases": ["Toyota RAV4"]}},
+            "searches": [{"name": "test", "source": "new_source", "url": "https://x"}],
+        }
+        with tempfile.TemporaryDirectory() as d, patch.dict(SCRAPERS, {"new_source": FakeScraper}):
+            db = Database(str(Path(d) / "test.sqlite3"))
+            self.assertEqual(run_once(cfg, db), 0)
+            self.assertTrue(db.source_is_initialized("new_source"))
+
+            FakeScraper.items.append(Listing(
+                "new_source", "new_source:2", "https://x/2", "Toyota RAV4 Hybrid",
+                price=490000, currency="CZK", year=2021, mileage_km=70000,
+                fuel="Hybrid", transmission="Automat",
+            ))
+            self.assertEqual(run_once(cfg, db), 1)
+            db.conn.close()
 
     def test_database_returns_only_latest_new_batch(self):
         with tempfile.TemporaryDirectory() as d:
@@ -110,6 +236,7 @@ class ParserTests(unittest.TestCase):
             latest = db.latest_new_listings()
 
             self.assertEqual([item.external_id for item in latest], ["new-2", "new-1"])
+            db.conn.close()
 
     def test_vehicle_filter_and_scoring(self):
         cfg = {

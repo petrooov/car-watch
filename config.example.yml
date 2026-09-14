@@ -102,3 +102,4 @@ searches:
   - {name: "Kia Sorento", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/kia/sorento?cena-do=550000&vyrobeno-od=2019", enabled: true}
   - {name: "Kia Sorento", source: tipcars, url: "https://www.tipcars.com/kia-sorento", enabled: true}
   - {name: "Kia Sorento", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/kia-sorento/", enabled: true}
+  - {name: "Toyota RAV4", source: carvago, url: "https://carvago.com/cs/auta/toyota/rav4?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: false}

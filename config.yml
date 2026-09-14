@@ -140,6 +140,24 @@ searches:
   - {name: "Volvo XC60", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/volvo-xc60/", enabled: true}
   - {name: "Lexus NX", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/lexus-nx/", enabled: true}
 
+  # Carvago – serverové filtry drží stránky malé; finální kontrolu
+  # ceny, roku, nájezdu, paliva a převodovky stejně provede lokální matcher.
+  - {name: "Toyota RAV4", source: carvago, url: "https://carvago.com/cs/auta/toyota/rav4?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Mazda CX-5", source: carvago, url: "https://carvago.com/cs/auta/mazda/cx-5?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Honda CR-V", source: carvago, url: "https://carvago.com/cs/auta/honda/cr-v?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Mitsubishi Outlander", source: carvago, url: "https://carvago.com/cs/auta/mitsubishi/outlander?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Hyundai Tucson", source: carvago, url: "https://carvago.com/cs/auta/hyundai/tucson?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Ford Kuga", source: carvago, url: "https://carvago.com/cs/auta/ford/kuga?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Kia Sportage", source: carvago, url: "https://carvago.com/cs/auta/kia/sportage?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Peugeot 5008", source: carvago, url: "https://carvago.com/cs/auta/peugeot/5008?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Volkswagen Tiguan", source: carvago, url: "https://carvago.com/cs/auta/volkswagen/tiguan?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Škoda Kodiaq", source: carvago, url: "https://carvago.com/cs/auta/skoda/kodiaq?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Renault Koleos", source: carvago, url: "https://carvago.com/cs/auta/renault/koleos?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Nissan X-Trail", source: carvago, url: "https://carvago.com/cs/auta/nissan/x-trail?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Subaru Forester", source: carvago, url: "https://carvago.com/cs/auta/subaru/forester?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Volvo XC60", source: carvago, url: "https://carvago.com/cs/auta/volvo/xc60?price-to=550000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Lexus NX", source: carvago, url: "https://carvago.com/cs/auta/lexus/nx?price-to=550000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+
   # Větší SUV ve stejném cenovém limitu.
   - {name: "Hyundai Santa Fe", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/hyundai/santa-fe?cena-do=550000&vyrobeno-od=2019", enabled: true}
   - {name: "Hyundai Santa Fe", source: tipcars, url: "https://www.tipcars.com/hyundai-santa-fe", enabled: true}
@@ -147,3 +165,5 @@ searches:
   - {name: "Kia Sorento", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/kia/sorento?cena-do=550000&vyrobeno-od=2019", enabled: true}
   - {name: "Kia Sorento", source: tipcars, url: "https://www.tipcars.com/kia-sorento", enabled: true}
   - {name: "Kia Sorento", source: bazos_auto, url: "https://auto.bazos.cz/inzeraty/kia-sorento/", enabled: true}
+  - {name: "Hyundai Santa Fe", source: carvago, url: "https://carvago.com/cs/auta/hyundai/santa-fe?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Kia Sorento", source: carvago, url: "https://carvago.com/cs/auta/kia/sorento?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
