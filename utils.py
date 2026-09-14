@@ -55,6 +55,43 @@ def parse_int(value: str | None) -> int | None:
     return int(digits) if digits else None
 
 
+def parse_mileage_km(text: str | None) -> int | None:
+    """Extract a plausible odometer value from Czech classified-ad text.
+
+    Supports separated and compact values (219 000, 219.000, 219000) and
+    abbreviated thousands (219 tis. km, 219 tkm). A bare three-digit number is
+    intentionally rejected so a broken match can never turn 219,000 into 219.
+    """
+    # Preserve HTML/block boundaries supplied as newlines. They keep an odometer
+    # value on one line from being joined to a price on the next line.
+    value = "\n".join(
+        cleaned for line in (text or "").splitlines()
+        if (cleaned := clean_text(line))
+    )
+    if not value:
+        return None
+
+    label = r"(?:najeto|nájezd|naj\.?|stav\s+tachometru|tachometr)"
+    full_number = r"(?:\d{1,3}(?:[ .,  ]\d{3}){1,2}|\d{4,7})"
+    thousands = r"(\d{1,3})\s*(?:tis(?:íc)?\.?\s*(?:km)?|t\s*km)\b"
+
+    # Prefer explicitly labelled values, then a conventional "number km" form.
+    patterns = (
+        (rf"\b{label}\s*[:=.-]?\s*{thousands}", True),
+        (rf"\b{thousands}", True),
+        (rf"\b{label}\s*[:=.-]?\s*({full_number})(?:\s*km\b)?", False),
+        (rf"\b({full_number})\s*km\b", False),
+    )
+    for pattern, is_thousands in patterns:
+        match = re.search(pattern, value, re.I)
+        if not match:
+            continue
+        mileage = int(match.group(1)) * 1_000 if is_thousands else parse_int(match.group(1))
+        if mileage is not None and 1_000 <= mileage <= 2_000_000:
+            return mileage
+    return None
+
+
 def detect_fuel(text: str | None) -> str | None:
     """Infer a normalized fuel category from listing text or an engine badge."""
     value = clean_text(text)

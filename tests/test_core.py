@@ -15,7 +15,7 @@ from matcher import evaluate
 from main import _telegram, run_once, should_notify
 from scrapers import SCRAPERS
 from db import Change
-from utils import detect_fuel
+from utils import detect_fuel, parse_mileage_km
 
 
 class ParserTests(unittest.TestCase):
@@ -51,6 +51,17 @@ class ParserTests(unittest.TestCase):
         items = BazosAutoScraper(None).parse(html, "https://auto.bazos.cz/")
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].fuel, "Diesel")
+
+    def test_bazos_keeps_full_mileage_with_common_separators(self):
+        for position, written in enumerate(("219 000", "219.000", "219000", "219 tis. km", "219 tkm"), 1):
+            with self.subTest(written=written):
+                html = f"""<div class="inzeraty"><h2><a href="/inzerat/223786{position:03d}/toyota-rav4.php">Toyota RAV4 2.5 Hybrid automat</a></h2><div>rok 2020, najeto {written}</div><div>459 000 Kč</div></div>"""
+                items = BazosAutoScraper(None).parse(html, "https://auto.bazos.cz/")
+                self.assertEqual(len(items), 1)
+                self.assertEqual(items[0].mileage_km, 219000)
+
+    def test_mileage_parser_rejects_bare_three_digit_fragment(self):
+        self.assertIsNone(parse_mileage_km("najeto 219, servis proveden"))
 
     def test_tipcars_separates_price_year_and_mileage(self):
         html = '''<div class="advertisement">

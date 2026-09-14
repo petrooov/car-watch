@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup, Tag
 
 from models import Listing
-from utils import absolute, clean_text, detect_fuel, parse_int, stable_id
+from utils import absolute, clean_text, detect_fuel, parse_int, parse_mileage_km, stable_id
 from .base import Scraper
 
 
@@ -28,7 +28,8 @@ class BazosAutoScraper(Scraper):
                 continue
 
             card = self._card(link)
-            text = clean_text(card.get_text(" ", strip=True))
+            raw_text = card.get_text("\n", strip=True)
+            text = clean_text(raw_text)
             title = clean_text(link.get_text(" ", strip=True))
             if len(title) < 4:
                 heading = card.find(["h2", "h3"])
@@ -43,13 +44,11 @@ class BazosAutoScraper(Scraper):
             price_match = re.search(r"([\d\s\u00a0\u202f]+)\s*Kč", text, re.I)
             # Bazos descriptions use many forms: rok 2020, r.v. 2020, 5/2020.
             year_match = re.search(r"(?:rok|r\.?\s*v\.?|reg\.?|registrace)?\s*[:.]?\s*(?:\d{1,2}/)?\s*\b(19\d{2}|20\d{2})\b", text, re.I)
-            km_match = re.search(r"(?:najeto|nájezd|naj\.?|km)\s*[:.]?\s*([\d\s\u00a0\u202f]{3,})\s*(?:km)?", text, re.I)
-            if not km_match:
-                km_match = re.search(r"([\d\s\u00a0\u202f]{4,})\s*km\b", text, re.I)
+            mileage_km = parse_mileage_km(raw_text)
 
             # Deliberately strict: Bazos mixes cars, parts and accessories. We only
             # accept results where the ad itself exposes price + year + mileage.
-            if not (price_match and year_match and km_match):
+            if not (price_match and year_match and mileage_km is not None):
                 continue
 
             ext_id = stable_id(self.source, url)
@@ -72,7 +71,7 @@ class BazosAutoScraper(Scraper):
                 price=parse_int(price_match.group(1)),
                 currency="CZK",
                 year=int(year_match.group(1)),
-                mileage_km=parse_int(km_match.group(1)),
+                mileage_km=mileage_km,
                 fuel=fuel,
                 transmission=transmission,
                 image_url=image_url,
