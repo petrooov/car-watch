@@ -45,7 +45,8 @@ def _enrich_and_ai(
     all_items: list[Listing],
     scrapers: dict[str, object],
     ranker: AIRanker,
-) -> None:
+    config: dict,
+) -> bool:
     scraper = scrapers.get(item.source)
     if scraper is not None:
         try:
@@ -53,10 +54,18 @@ def _enrich_and_ai(
         except Exception as exc:
             print(f"[WARN] detail fetch failed for {item.title}: {exc}")
 
+    # The results card may omit fuel while the detail contains it. Re-run all
+    # hard filters after enrichment and before spending an AI call or notifying.
+    match = evaluate(item, config)
+    if not match.accepted:
+        print(f"[FILTER] {item.title}: {match.reason}")
+        return False
+
     if ranker.available:
         ok = ranker.evaluate(item, all_items)
         if ok:
             print(f"[AI] {item.score}/100 · {item.title}")
+    return True
 
 
 def run_once(
@@ -138,13 +147,16 @@ def run_once(
             )[:candidate_limit]
 
             print(f"\n[send-all] AI/detail shortlist: {len(candidates)} aut")
+            eligible_candidates: list[Listing] = []
             for item in candidates:
-                _enrich_and_ai(item, all_items, scraper_instances, ranker)
+                if not _enrich_and_ai(item, all_items, scraper_instances, ranker, config):
+                    continue
+                eligible_candidates.append(item)
                 # Zapiš finální AI score do stávajících DB sloupců score/reason.
                 db.upsert(item)
 
             top_items = sorted(
-                candidates,
+                eligible_candidates,
                 key=lambda x: x.score or 0,
                 reverse=True,
             )[:top_n]
@@ -165,7 +177,9 @@ def run_once(
             item = change.listing
 
             if change.kind == "new" and notify_existing:
-                _enrich_and_ai(item, all_items, scraper_instances, ranker)
+                if not _enrich_and_ai(item, all_items, scraper_instances, ranker, config):
+                    db.upsert(item)
+                    continue
                 db.upsert(item)  # aktualizuje score/reason, nevytvoří další "new"
 
             processed += 1

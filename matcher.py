@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from models import Listing
+from utils import detect_fuel
 
 
 @dataclass(slots=True)
@@ -46,8 +47,14 @@ def evaluate(item: Listing, cfg: dict) -> MatchResult:
     excluded_fuels = {
         _norm(str(fuel)) for fuel in defaults.get("excluded_fuels", [])
     }
-    if item.fuel and _norm(item.fuel) in excluded_fuels:
-        return MatchResult(False, model=model, reason=f"excluded fuel {item.fuel}")
+    detected_fuel = detect_fuel(
+        " ".join(filter(None, (item.title, item.fuel, item.detail_text)))
+    )
+    if item.fuel is None and detected_fuel:
+        item.fuel = detected_fuel
+    for fuel in (item.fuel, detected_fuel):
+        if fuel and _norm(fuel) in excluded_fuels:
+            return MatchResult(False, model=model, reason=f"excluded fuel {fuel}")
 
     excluded_transmissions = {
         _norm(str(transmission))

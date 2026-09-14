@@ -5,7 +5,7 @@ import re
 from bs4 import BeautifulSoup, Tag
 
 from models import Listing
-from utils import absolute, clean_text, parse_int, stable_id
+from utils import absolute, clean_text, detect_fuel, parse_int, stable_id
 from .base import Scraper
 
 
@@ -48,6 +48,7 @@ class MobileDeScraper(Scraper):
                         title=title,
                         price=parse_int(str(price)) if price is not None else None,
                         currency=offers.get("priceCurrency") or "EUR",
+                        fuel=detect_fuel(title),
                         image_url=(item.get("image") if isinstance(item.get("image"), str) else None),
                     ))
         return self._dedupe(out)
@@ -83,6 +84,7 @@ class MobileDeScraper(Scraper):
                 currency="EUR" if price_match else None,
                 year=int(year_match.group(1)) if year_match else None,
                 mileage_km=parse_int(km_match.group(1)) if km_match else None,
+                fuel=detect_fuel(f"{title} {text}"),
             ))
         return self._dedupe(out)
 

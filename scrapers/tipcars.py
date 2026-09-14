@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup, Tag
 
 from models import Listing
-from utils import absolute, clean_text, parse_int, stable_id
+from utils import absolute, clean_text, detect_fuel, parse_int, stable_id
 from .base import Scraper
 
 
@@ -57,7 +57,7 @@ class TipCarsScraper(Scraper):
                 continue
 
             low = text.lower()
-            fuel = next((x for x in ["Hybridní", "Benzin", "Benzín", "Nafta", "Elektro", "LPG", "CNG"] if x.lower() in low), None)
+            fuel = detect_fuel(f"{title} {text}")
             transmission = next((x for x in ["automat", "manuál", "manuální"] if x in low), None)
 
             image = card.find("img")

@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup, Tag
 
 from models import Listing
-from utils import absolute, clean_text, parse_int, stable_id
+from utils import absolute, clean_text, detect_fuel, parse_int, stable_id
 from .base import Scraper
 
 
@@ -36,7 +36,7 @@ class SautoScraper(Scraper):
             year_match = re.search(r"\b(19\d{2}|20\d{2})\b", text)
             km_match = re.search(r"([\d\s\u00a0\u202f]+)\s*km\b", text, re.I)
             transmission = self._contains(text, ["Automatická", "Manuální"])
-            fuel = self._contains(text, ["Benzín", "Nafta", "Elektro", "Hybridní", "LPG", "CNG"])
+            fuel = detect_fuel(f"{title} {text}")
 
             image = card.find("img")
             image_url = None

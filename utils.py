@@ -6,6 +6,43 @@ from urllib.parse import urljoin, urlparse, parse_qs
 
 SPACE_RE = re.compile(r"[\s\u00a0\u202f]+")
 
+# Ordered from the most important/specific category to the broadest. Diesel is
+# deliberately first: a diesel hybrid must still be rejected when diesels are
+# excluded. Boundaries prevent short badges such as D4 or EV from matching text
+# inside ordinary words.
+FUEL_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Diesel", (
+        r"\b(?:diesel|naft(?:a|ový|ová|ové|ový motor))\b",
+        r"\b(?:t[ -]?di|bi[ -]?tdi|sdi|td[ -]?ci|tddi|d[ -]?ci)\b",
+        r"\b(?:blue[ -]?hdi|e[ -]?hdi|hdi|cr[ -]?di|cdi|blue[ -]?tec)\b",
+        r"\b(?:cdti|dti|ddi[ -]?s|di[ -]?d|d[ -]?4[ -]?d)\b",
+        r"\b(?:i[ -]?dtec|i[ -]?ctdi|skyactiv[ -]?d|eco[ -]?blue)\b",
+        r"\b(?:multi[ -]?jet|jtdm?|m[ -]?jet)\b",
+        r"\b(?:boxer[ -]?diesel|td4|sd4|edc17)\b",
+        r"\bd[2-6]\b",                         # Volvo D2–D6
+        r"\b(?:xdrive|sdrive)?\s*\d{2,3}d\b", # BMW/Jaguar 20d, 320d…
+        r"\b\d(?:[.,]\d)?\s*d\b",            # 2.0D, 1.6 D
+        r"\bd(?:150|180|200|250|300|350)\b",   # modern JLR badges
+    )),
+    ("Plug-in hybrid", (
+        r"\b(?:phev|plug[ -]?in(?: hybrid)?)\b",
+    )),
+    ("Hybridní", (
+        r"\b(?:hybrid(?:ní)?|fhev|mhev|hev|e[ :.-]?hev|e[ -]?power)\b",
+    )),
+    ("Elektro", (
+        r"\b(?:elektro|elektrick(?:ý|á|é)|bev|ev)\b",
+    )),
+    ("LPG", (r"\blpg\b",)),
+    ("CNG", (r"\bcng\b",)),
+    ("Benzín", (
+        r"\b(?:benz[ií]n|petrol|gasoline)\b",
+        r"\b(?:tsi|tfsi|fsi|mpi|gdi|t[ -]?gdi|dig[ -]?t)\b",
+        r"\b(?:ecoboost|puretech|thp|tce|boosterjet)\b",
+        r"\b(?:skyactiv[ -]?[gx]|vvt[ -]?i)\b",
+    )),
+)
+
 
 def clean_text(value: str | None) -> str:
     return SPACE_RE.sub(" ", value or "").strip()
@@ -16,6 +53,17 @@ def parse_int(value: str | None) -> int | None:
         return None
     digits = re.sub(r"\D", "", value)
     return int(digits) if digits else None
+
+
+def detect_fuel(text: str | None) -> str | None:
+    """Infer a normalized fuel category from listing text or an engine badge."""
+    value = clean_text(text)
+    if not value:
+        return None
+    for fuel, patterns in FUEL_PATTERNS:
+        if any(re.search(pattern, value, re.I) for pattern in patterns):
+            return fuel
+    return None
 
 
 def stable_id(source: str, url: str) -> str:

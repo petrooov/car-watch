@@ -12,6 +12,7 @@ from scrapers.bazos import BazosAutoScraper
 from matcher import evaluate
 from main import _telegram, should_notify
 from db import Change
+from utils import detect_fuel
 
 
 class ParserTests(unittest.TestCase):
@@ -41,6 +42,12 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(items[0].price, 529000)
         self.assertEqual(items[0].year, 2020)
         self.assertEqual(items[0].mileage_km, 99000)
+
+    def test_bazos_recognizes_dci_as_diesel(self):
+        html = """<div class="inzeraty"><h2><a href="/inzerat/223786072/renault-koleos-20-dci.php">Renault Koleos 2,0 DCI Initiale Paris</a></h2><div>rok 2019, najeto 105 000 km, automat</div><div>459 000 Kč</div></div>"""
+        items = BazosAutoScraper(None).parse(html, "https://auto.bazos.cz/")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].fuel, "Diesel")
 
     def test_tipcars_separates_price_year_and_mileage(self):
         html = '''<div class="advertisement">
@@ -124,7 +131,7 @@ class ParserTests(unittest.TestCase):
         self.assertFalse(evaluate(too_expensive, cfg).accepted)
 
         premium = Listing("sauto", "3", "https://x/3", "Volvo XC60 D4", price=525000, currency="CZK", year=2018, mileage_km=125000)
-        self.assertTrue(evaluate(premium, cfg).accepted)
+        self.assertFalse(evaluate(premium, cfg).accepted)
 
         old_mainstream = Listing("sauto", "4", "https://x/4", "Toyota RAV4", price=450000, currency="CZK", year=2018, mileage_km=90000)
         self.assertFalse(evaluate(old_mainstream, cfg).accepted)
@@ -138,6 +145,24 @@ class ParserTests(unittest.TestCase):
         result = evaluate(manual, cfg)
         self.assertFalse(result.accepted)
         self.assertEqual(result.reason, "excluded transmission Manuální")
+
+    def test_engine_badges_detect_fuel(self):
+        diesel_titles = [
+            "Renault Koleos 2.0 dCi", "Škoda Kodiaq 2.0 TDI",
+            "Peugeot 5008 BlueHDi", "Hyundai Tucson 1.6 CRDi",
+            "Ford Kuga 2.0 TDCi", "Mazda CX-5 SKYACTIV-D",
+            "Toyota RAV4 D-4D", "Honda CR-V i-DTEC",
+            "Mitsubishi Outlander 2.2 DI-D", "Volvo XC60 D4",
+            "Fiat 500X MultiJet", "Opel Insignia CDTI",
+            "Mercedes GLC 220d", "BMW X3 xDrive20d",
+        ]
+        for title in diesel_titles:
+            with self.subTest(title=title):
+                self.assertEqual(detect_fuel(title), "Diesel")
+
+        self.assertEqual(detect_fuel("Toyota RAV4 2.5 PHEV"), "Plug-in hybrid")
+        self.assertEqual(detect_fuel("Honda CR-V e:HEV"), "Hybridní")
+        self.assertEqual(detect_fuel("Ford Kuga 1.5 EcoBoost"), "Benzín")
 
     def test_only_new_listings_are_notified_by_default(self):
         item = Listing("sauto", "sauto:1", "https://x/1", "Toyota RAV4", price=500000, currency="CZK")

@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup, Tag
 
 from models import Listing
-from utils import absolute, clean_text, parse_int, stable_id
+from utils import absolute, clean_text, detect_fuel, parse_int, stable_id
 from .base import Scraper
 
 
@@ -56,7 +56,7 @@ class BazosAutoScraper(Scraper):
             if ext_id in seen:
                 continue
 
-            fuel = next((x for x in ["hybrid", "benzín", "benzin", "nafta", "diesel", "elektro", "LPG", "CNG"] if x.lower() in low), None)
+            fuel = detect_fuel(low)
             transmission = next((x for x in ["automat", "manuál", "manual"] if x in low), None)
 
             image = card.find("img")
