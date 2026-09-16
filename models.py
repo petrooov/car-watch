@@ -21,6 +21,8 @@ class Listing:
     model: Optional[str] = None
     score: Optional[int] = None
     match_reason: Optional[str] = None
+    review_required: bool = False
+    review_reason: Optional[str] = None
 
     # Detail inzerátu – používá se pro AI hodnocení, do SQLite se neukládá.
     detail_text: Optional[str] = None

@@ -80,6 +80,12 @@ Výchozí interval je 30 minut. Jednorázová kontrola:
 python main.py --once
 ```
 
+Bezpečný náhled bez změny nabídek nebo stavu hledání, bez AI a bez Telegramu:
+
+```bash
+python main.py --once --dry-run
+```
+
 Na Macu můžeš také dvakrát kliknout na `run.command`. Při prvním spuštění vytvoří `.venv`; pokud chybí `.env`, vytvoří ho z šablony a otevře k vyplnění.
 
 ## Co se hlídá
@@ -156,7 +162,8 @@ python main.py --send-all
 1. `main.py` načte `.env` a `config.yml` a spustí zapnutá hledání ze sekce `searches`.
 2. Adaptéry v `scrapers/` stáhnou výsledkové stránky Sauto, TipCars a Bazoš, rozpoznají palivo i podle běžných označení motorů (např. TDI, dCi, BlueHDi, CRDi nebo D-4D) a převedou inzeráty na jednotný formát.
 3. `matcher.py` vyřadí auta mimo povolené modely, cenu, rok, nájezd, palivo či převodovku a přidělí jim lokální score. Po otevření detailu se tvrdé filtry zkontrolují ještě jednou.
-4. `db.py` porovná výsledek se SQLite databází a označí nový inzerát nebo změnu ceny. Díky tomu se stejný inzerát neposílá opakovaně.
+4. `db.py` porovná výsledek se SQLite databází a označí nový inzerát nebo změnu ceny. Každé hledání (`zdroj:model`) má vlastní stav prvního úspěšného načtení, takže výpadek jednoho modelu neovlivní ostatní.
 5. U nových aut může `ai_ranker.py` otevřít detail a s `OPENAI_API_KEY` doplnit AI score a krátké shrnutí; bez klíče zůstane lokální hodnocení.
-6. `notifier.py` vytvoří zprávu a přes Telegram Bot API ji pošle všem nakonfigurovaným příjemcům. `TELEGRAM_BOT_TOKEN` určuje odesílajícího bota, `TELEGRAM_CHAT_ID` cílový chat; varianty s `_2` slouží druhému příjemci.
-7. Lokálně se kontrola opakuje podle `interval_minutes`; na GitHubu ji spouští plán v `.github/workflows/car-watch.yml` a databáze se mezi běhy obnovuje z cache.
+6. Rozporný rok, nájezd, palivo nebo převodovka označí nabídku pro ruční kontrolu a automaticky ji neodešle.
+7. `notifier.py` vytvoří zprávu a přes Telegram Bot API ji pošle všem nakonfigurovaným příjemcům. Každý úspěšný i neúspěšný pokus se uloží do tabulky `notification_log`. `TELEGRAM_BOT_TOKEN` určuje odesílajícího bota, `TELEGRAM_CHAT_ID` cílový chat; varianty s `_2` slouží druhému příjemci.
+8. Lokálně se kontrola opakuje podle `interval_minutes`; na GitHubu ji spouští plán v `.github/workflows/car-watch.yml` a databáze se mezi běhy obnovuje z cache.

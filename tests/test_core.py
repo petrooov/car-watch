@@ -12,10 +12,11 @@ from scrapers.bazos import BazosAutoScraper
 from scrapers.carvago import CarvagoScraper
 from dedupe import is_probable_duplicate
 from matcher import evaluate
-from main import _telegram, run_once, should_notify
+from main import _send_and_log, _telegram, run_once, should_notify
 from scrapers import SCRAPERS
 from db import Change
 from utils import detect_fuel, parse_mileage_km
+from validation import apply_review_state
 
 
 class ParserTests(unittest.TestCase):
@@ -202,16 +203,17 @@ class ParserTests(unittest.TestCase):
             self.assertIn("https://carvago/999", row["alternative_urls"])
             db.conn.close()
 
-    def test_partial_new_source_stays_uninitialized_after_reopen(self):
+    def test_partial_new_search_stays_uninitialized_after_reopen(self):
         with tempfile.TemporaryDirectory() as d:
             path = str(Path(d) / "test.sqlite3")
             db = Database(path)
+            search = {"source": "partial", "name": "Toyota RAV4"}
             db.upsert(Listing("partial", "partial:1", "https://x/1", "Car"))
-            self.assertFalse(db.source_is_initialized("partial"))
+            self.assertFalse(db.search_is_initialized(search))
             db.conn.close()
 
             reopened = Database(path)
-            self.assertFalse(reopened.source_is_initialized("partial"))
+            self.assertFalse(reopened.search_is_initialized(search))
             reopened.conn.close()
 
     def test_new_source_is_seeded_silently_then_notifies(self):
@@ -241,7 +243,7 @@ class ParserTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, patch.dict(SCRAPERS, {"new_source": FakeScraper}):
             db = Database(str(Path(d) / "test.sqlite3"))
             self.assertEqual(run_once(cfg, db), 0)
-            self.assertTrue(db.source_is_initialized("new_source"))
+            self.assertTrue(db.search_is_initialized(cfg["searches"][0]))
 
             FakeScraper.items.append(Listing(
                 "new_source", "new_source:2", "https://x/2", "Toyota RAV4 Hybrid",
@@ -250,6 +252,86 @@ class ParserTests(unittest.TestCase):
             ))
             self.assertEqual(run_once(cfg, db), 1)
             db.conn.close()
+
+    def test_dry_run_does_not_modify_database_or_search_state(self):
+        class FakeScraper:
+            def __init__(self, client):
+                pass
+
+            def scrape(self, url):
+                return [Listing(
+                    "preview", "preview:1", "https://x/1", "Toyota RAV4 Hybrid",
+                    price=500000, currency="CZK", year=2021, mileage_km=80000,
+                    fuel="Hybridní", transmission="Automat",
+                )]
+
+            def enrich(self, item, max_chars=14000):
+                return item
+
+        cfg = {
+            "telegram": {"enabled": False}, "ai": {"enabled": False},
+            "filters": {"max_price": 550000, "min_year": 2019, "max_mileage_km": 130000},
+            "vehicle_rules": {"Toyota RAV4": {"aliases": ["Toyota RAV4"]}},
+            "searches": [{"name": "Toyota RAV4", "source": "preview", "url": "https://x"}],
+        }
+        with tempfile.TemporaryDirectory() as d, patch.dict(SCRAPERS, {"preview": FakeScraper}):
+            db = Database(str(Path(d) / "test.sqlite3"))
+            self.assertEqual(run_once(cfg, db, dry_run=True), 1)
+            self.assertEqual(db.conn.execute("SELECT COUNT(*) FROM listings").fetchone()[0], 0)
+            self.assertEqual(db.conn.execute("SELECT COUNT(*) FROM search_state").fetchone()[0], 0)
+            self.assertEqual(db.conn.execute("SELECT COUNT(*) FROM notification_log").fetchone()[0], 0)
+            db.conn.close()
+
+    def test_each_search_is_initialized_independently(self):
+        with tempfile.TemporaryDirectory() as d:
+            db = Database(str(Path(d) / "test.sqlite3"))
+            rav4 = {"source": "same", "name": "Toyota RAV4"}
+            xc60 = {"source": "same", "name": "Volvo XC60"}
+            db.mark_search_success(rav4)
+            self.assertTrue(db.search_is_initialized(rav4))
+            self.assertFalse(db.search_is_initialized(xc60))
+            db.conn.close()
+
+    @patch("notifier.httpx.post")
+    def test_successful_notifications_are_logged_per_recipient(self, post):
+        post.return_value.raise_for_status.return_value = None
+        post.return_value.json.return_value = {"ok": True}
+        cfg = {"telegram": {"enabled": True, "recipients": [
+            {"name": "first", "bot_token_env": "BOT_1", "chat_id_env": "CHAT_1"},
+            {"name": "second", "bot_token_env": "BOT_2", "chat_id_env": "CHAT_2"},
+        ]}}
+        item = Listing("sauto", "sauto:log", "https://x/log", "Toyota RAV4")
+        with tempfile.TemporaryDirectory() as d, patch.dict(
+            "os.environ", {"BOT_1": "token-1", "CHAT_1": "chat-1", "BOT_2": "token-2", "CHAT_2": "chat-2"}
+        ):
+            db = Database(str(Path(d) / "test.sqlite3"))
+            change = Change("new", item)
+            _send_and_log(_telegram(cfg), db, change)
+            rows = db.conn.execute(
+                "SELECT recipient, status FROM notification_log ORDER BY id"
+            ).fetchall()
+            self.assertEqual([(row["recipient"], row["status"]) for row in rows],
+                             [("first", "sent"), ("second", "sent")])
+            db.conn.close()
+
+    def test_suspicious_listing_is_marked_for_review(self):
+        item = Listing(
+            "bazos_auto", "bazos:review", "https://x/review", "Toyota RAV4 Hybrid",
+            year=2028, mileage_km=219, fuel="Hybridní",
+            detail_text="Rok výroby: 2019, najeto: 219 000 km",
+        )
+        reasons = apply_review_state(item, current_year=2026)
+        self.assertTrue(item.review_required)
+        self.assertTrue(any("rok" in reason for reason in reasons))
+        self.assertTrue(any("nájezdu" in reason for reason in reasons))
+
+        transmission_conflict = Listing(
+            "sauto", "sauto:review", "https://x/review-2",
+            "Toyota RAV4 2.5 Hybrid manuál", year=2022, mileage_km=80000,
+            fuel="Hybridní", transmission="Automatická",
+        )
+        reasons = apply_review_state(transmission_conflict, current_year=2026)
+        self.assertTrue(any("převodovky" in reason for reason in reasons))
 
     def test_database_returns_only_latest_new_batch(self):
         with tempfile.TemporaryDirectory() as d:

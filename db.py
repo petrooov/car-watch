@@ -59,12 +59,31 @@ class Database:
             source TEXT PRIMARY KEY,
             initialized_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS search_state (
+            search_key TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            name TEXT NOT NULL,
+            initialized_at TEXT NOT NULL,
+            last_success_at TEXT,
+            last_error TEXT
+        );
+        CREATE TABLE IF NOT EXISTS notification_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            external_id TEXT NOT NULL,
+            change_kind TEXT NOT NULL,
+            recipient TEXT NOT NULL,
+            status TEXT NOT NULL,
+            attempted_at TEXT NOT NULL,
+            sent_at TEXT,
+            error TEXT
+        );
         """)
         # Lightweight migration for databases created by older versions.
         cols = {row[1] for row in self.conn.execute("PRAGMA table_info(listings)")}
         for name, decl in (
             ("model", "TEXT"), ("score", "INTEGER"), ("match_reason", "TEXT"),
             ("canonical_id", "TEXT"), ("vin", "TEXT"), ("alternative_urls", "TEXT"),
+            ("review_required", "INTEGER NOT NULL DEFAULT 0"), ("review_reason", "TEXT"),
         ):
             if name not in cols:
                 self.conn.execute(f"ALTER TABLE listings ADD COLUMN {name} {decl}")
@@ -94,6 +113,75 @@ class Database:
         self.conn.execute(
             "INSERT OR IGNORE INTO source_state(source, initialized_at) VALUES (?, ?)",
             (source, now),
+        )
+        self.conn.commit()
+
+    @staticmethod
+    def search_key(search: dict) -> str:
+        return f"{search.get('source', '')}:{search.get('name', '')}"
+
+    def migrate_search_state(self, searches: list[dict]) -> None:
+        """Map legacy source-level initialization to current searches once."""
+        if self.conn.execute("SELECT 1 FROM search_state LIMIT 1").fetchone():
+            return
+        initialized_sources = {
+            row["source"] for row in self.conn.execute("SELECT source FROM source_state")
+        }
+        if not initialized_sources:
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        for search in searches:
+            if search.get("source") in initialized_sources:
+                self.conn.execute(
+                    """INSERT OR IGNORE INTO search_state
+                       (search_key, source, name, initialized_at, last_success_at)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    (self.search_key(search), search["source"], search.get("name", ""), now, now),
+                )
+        self.conn.commit()
+
+    def search_is_initialized(self, search: dict) -> bool:
+        return self.conn.execute(
+            "SELECT 1 FROM search_state WHERE search_key = ?", (self.search_key(search),)
+        ).fetchone() is not None
+
+    def mark_search_success(self, search: dict) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            """INSERT INTO search_state
+               (search_key, source, name, initialized_at, last_success_at, last_error)
+               VALUES (?, ?, ?, ?, ?, NULL)
+               ON CONFLICT(search_key) DO UPDATE SET last_success_at=excluded.last_success_at,
+                   last_error=NULL""",
+            (self.search_key(search), search["source"], search.get("name", ""), now, now),
+        )
+        self.conn.commit()
+
+    def mark_search_error(self, search: dict, error: str) -> None:
+        row = self.conn.execute(
+            "SELECT 1 FROM search_state WHERE search_key = ?", (self.search_key(search),)
+        ).fetchone()
+        if row:
+            self.conn.execute(
+                "UPDATE search_state SET last_error = ? WHERE search_key = ?",
+                (error[:1000], self.search_key(search)),
+            )
+            self.conn.commit()
+
+    def log_notification(
+        self,
+        change: Change,
+        recipient: str,
+        status: str,
+        error: str | None = None,
+    ) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        self.conn.execute(
+            """INSERT INTO notification_log
+               (external_id, change_kind, recipient, status, attempted_at, sent_at, error)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (change.listing.external_id, change.kind, recipient, status, now,
+             now if status == "sent" else None, error[:2000] if error else None),
         )
         self.conn.commit()
 
@@ -136,14 +224,16 @@ class Database:
                 INSERT INTO listings (
                     external_id, source, url, title, price, currency, year,
                     mileage_km, fuel, transmission, location, image_url, model, score, match_reason,
-                    canonical_id, vin, alternative_urls, first_seen, last_seen
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    canonical_id, vin, alternative_urls, review_required, review_reason,
+                    first_seen, last_seen
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 item.external_id, item.source, item.url, item.title, item.price,
                 item.currency, item.year, item.mileage_km, item.fuel,
                 item.transmission, item.location, item.image_url, item.model, item.score,
                 item.match_reason, item.canonical_id, item.vin,
-                json.dumps(item.alternative_urls or [], ensure_ascii=False), now, now
+                json.dumps(item.alternative_urls or [], ensure_ascii=False),
+                int(item.review_required), item.review_reason, now, now
             ))
             self.conn.execute(
                 "INSERT INTO price_history(external_id, price, seen_at) VALUES (?, ?, ?)",
@@ -176,7 +266,8 @@ class Database:
             UPDATE listings SET
                 url=?, title=?, price=?, currency=?, year=?, mileage_km=?, fuel=?,
                 transmission=?, location=?, image_url=?, model=?, score=?, match_reason=?,
-                canonical_id=?, vin=?, alternative_urls=?, last_seen=?
+                canonical_id=?, vin=?, alternative_urls=?, review_required=?, review_reason=?,
+                last_seen=?
             WHERE external_id=?
         """, (
             item.url, item.title, item.price, item.currency, item.year,
@@ -184,7 +275,7 @@ class Database:
             item.image_url, item.model, item.score, item.match_reason,
             item.canonical_id, item.vin,
             json.dumps(item.alternative_urls or [], ensure_ascii=False),
-            now, item.external_id
+            int(item.review_required), item.review_reason, now, item.external_id
         ))
 
         if item.price is not None and old_price != item.price:
@@ -213,7 +304,42 @@ class Database:
             image_url=row["image_url"], model=row["model"], score=row["score"],
             match_reason=row["match_reason"], canonical_id=row["canonical_id"],
             vin=row["vin"], alternative_urls=alternatives or None,
+            review_required=bool(row["review_required"]), review_reason=row["review_reason"],
         )
+
+    def preview_change(self, item: Listing) -> Change | None:
+        """Classify an item without changing listings, history, or timestamps."""
+        row = self.conn.execute(
+            "SELECT * FROM listings WHERE external_id = ?", (item.external_id,)
+        ).fetchone()
+        if row is None and item.canonical_id:
+            row = self.conn.execute(
+                "SELECT * FROM listings WHERE external_id = ? OR canonical_id = ? LIMIT 1",
+                (item.canonical_id, item.canonical_id),
+            ).fetchone()
+        if row is None and item.vin:
+            row = self.conn.execute("SELECT * FROM listings WHERE vin = ? LIMIT 1", (item.vin,)).fetchone()
+        if row is None and item.model and item.year and item.mileage_km is not None:
+            tolerance = max(10, round(item.mileage_km * 0.001))
+            candidates = self.conn.execute(
+                """SELECT * FROM listings
+                   WHERE source != ? AND model = ? AND year = ?
+                     AND mileage_km BETWEEN ? AND ?""",
+                (item.source, item.model, item.year,
+                 item.mileage_km - tolerance, item.mileage_km + tolerance),
+            ).fetchall()
+            row = next(
+                (candidate for candidate in candidates
+                 if is_probable_duplicate(self._listing(candidate), item)),
+                None,
+            )
+        if row is None:
+            return Change("new", item)
+        if row["external_id"] != item.external_id:
+            return None
+        if item.price is not None and row["price"] != item.price:
+            return Change("price_change", item, row["price"])
+        return None
 
     def latest_new_listings(self, batch_window_seconds: int = 60) -> list[Listing]:
         """Return the newest burst of first-seen listings from the database."""

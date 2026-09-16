@@ -14,6 +14,7 @@ from matcher import evaluate
 from models import Listing
 from scrapers import SCRAPERS
 from dedupe import add_alternative, identity_key, is_probable_duplicate
+from validation import apply_review_state
 
 
 def load_config(path: str) -> dict:
@@ -41,6 +42,21 @@ def _telegram(config: dict, require_enabled: bool = True) -> TelegramNotifier | 
     )
 
 
+def _send_and_log(
+    notifier: TelegramNotifier,
+    db: Database,
+    change: Change,
+    recipient_name: str | None = None,
+) -> None:
+    notifier.send(
+        change,
+        recipient_name=recipient_name,
+        on_result=lambda recipient, status, error: db.log_notification(
+            change, recipient, status, error
+        ),
+    )
+
+
 def _enrich_and_ai(
     item: Listing,
     all_items: list[Listing],
@@ -62,6 +78,11 @@ def _enrich_and_ai(
         print(f"[FILTER] {item.title}: {match.reason}")
         return False
 
+    reasons = apply_review_state(item)
+    if reasons:
+        print(f"[REVIEW] {item.title}: {'; '.join(reasons)}")
+        return False
+
     if ranker.available:
         ok = ranker.evaluate(item, all_items)
         if ok:
@@ -74,30 +95,33 @@ def run_once(
     db: Database,
     notify_existing: bool = True,
     send_all: bool = False,
+    dry_run: bool = False,
 ) -> int:
     timeout = config.get("request_timeout_seconds", 25)
     headers = {"User-Agent": config.get("user_agent", "CarWatch/0.3")}
-    notifier = _telegram(config)
+    notifier = None if dry_run else _telegram(config)
     ranker = AIRanker(config)
+    if dry_run:
+        ranker.enabled = False
 
     # Nejprve stáhneme všechny výsledky, aby AI mohla porovnat auto s právě
     # dostupnými kusy stejného modelu.
     accepted_items: dict[str, Listing] = {}
     scraper_instances: dict[str, object] = {}
-    seed_sources = {
-        search["source"]
-        for search in config.get("searches", [])
-        if search.get("enabled", True) and not db.source_is_initialized(search["source"])
+    searches = [search for search in config.get("searches", []) if search.get("enabled", True)]
+    if not dry_run:
+        db.migrate_search_state(searches)
+    seed_searches = {
+        db.search_key(search) for search in searches if not db.search_is_initialized(search)
     }
-    successfully_scraped_sources: set[str] = set()
-    failed_sources: set[str] = set()
+    successful_searches: dict[str, dict] = {}
+    failed_searches: dict[str, tuple[dict, str]] = {}
+    item_search_keys: dict[str, str] = {}
 
     with httpx.Client(timeout=timeout, headers=headers) as client:
-        for search in config.get("searches", []):
-            if not search.get("enabled", True):
-                continue
-
+        for search in searches:
             source = search["source"]
+            search_key = db.search_key(search)
             scraper_cls = SCRAPERS.get(source)
             if not scraper_cls:
                 print(f"[WARN] Unknown source: {source}")
@@ -110,10 +134,10 @@ def run_once(
 
             try:
                 listings = scraper.scrape(search["url"])
-                successfully_scraped_sources.add(source)
+                successful_searches[search_key] = search
                 print(f"[{source}] {search.get('name', '')}: {len(listings)} listings")
             except Exception as exc:
-                failed_sources.add(source)
+                failed_searches[search_key] = (search, str(exc))
                 print(f"[ERROR] {source}: {exc}")
                 continue
 
@@ -127,6 +151,8 @@ def run_once(
                 item.model = match.model
                 item.score = match.score
                 item.match_reason = match.reason
+                apply_review_state(item)
+                item_search_keys[item.external_id] = search_key
 
                 key = identity_key(item)
                 existing = accepted_items.get(key)
@@ -154,16 +180,26 @@ def run_once(
 
         # Uložíme všechny nalezené kusy a zjistíme, které jsou nové.
         for item in all_items:
-            change = db.upsert(item)
-            if change and not (change.kind == "new" and item.source in seed_sources):
+            change = db.preview_change(item) if dry_run else db.upsert(item)
+            is_seeded = item_search_keys.get(item.external_id) in seed_searches
+            if item.review_required:
+                print(f"[REVIEW] {item.title}: {item.review_reason}")
+                continue
+            if change and (dry_run or not (change.kind == "new" and is_seeded)):
                 changes.append(change)
 
-        fully_scraped_sources = successfully_scraped_sources - failed_sources
-        for source in fully_scraped_sources:
-            db.mark_source_initialized(source)
-        for source in sorted(seed_sources & fully_scraped_sources):
-            seeded = sum(item.source == source for item in all_items)
-            print(f"[{source}] first successful run: seeded {seeded} listings without notifications")
+        if not dry_run:
+            for search_key, search in successful_searches.items():
+                db.mark_search_success(search)
+            for search_key, (search, error) in failed_searches.items():
+                db.mark_search_error(search, error)
+            for search_key in sorted(seed_searches & successful_searches.keys()):
+                search = successful_searches[search_key]
+                seeded = sum(key == search_key for key in item_search_keys.values())
+                print(
+                    f"[{search['source']}] {search.get('name', '')}: first successful run; "
+                    f"seeded {seeded} listings without notifications"
+                )
 
         if send_all:
             ai_cfg = config.get("ai", {})
@@ -184,7 +220,8 @@ def run_once(
                     continue
                 eligible_candidates.append(item)
                 # Zapiš finální AI score do stávajících DB sloupců score/reason.
-                db.upsert(item)
+                if not dry_run:
+                    db.upsert(item)
 
             top_items = sorted(
                 eligible_candidates,
@@ -192,13 +229,15 @@ def run_once(
                 reverse=True,
             )[:top_n]
 
-            print(f"\nSending TOP {len(top_items)} listings to Telegram:")
+            action = "[DRY-RUN] TOP candidates" if dry_run else "Sending TOP listings to Telegram"
+            print(f"\n{action}: {len(top_items)}")
             for i, item in enumerate(top_items, 1):
                 print(f"{i}. [{item.score or 0}/100] {item.title} | {item.price or '?'} Kč")
                 if notifier:
-                    notifier.send(Change("new", item))
+                    _send_and_log(notifier, db, Change("new", item))
                 # Jemné zpomalení kvůli Telegram API při jednorázové dávce.
-                time.sleep(0.15)
+                if notifier:
+                    time.sleep(0.15)
             return len(top_items)
 
         # Běžný scheduled/--once režim: AI voláme jen pro NOVÉ inzeráty.
@@ -209,14 +248,17 @@ def run_once(
 
             if change.kind == "new" and notify_existing:
                 if not _enrich_and_ai(item, all_items, scraper_instances, ranker, config):
-                    db.upsert(item)
+                    if not dry_run:
+                        db.upsert(item)
                     continue
-                db.upsert(item)  # aktualizuje score/reason, nevytvoří další "new"
+                if not dry_run:
+                    db.upsert(item)  # aktualizuje score/reason, nevytvoří další "new"
 
             processed += 1
-            print("\n" + format_change(change).replace("<b>", "").replace("</b>", ""))
+            prefix = "[DRY-RUN] " if dry_run else ""
+            print("\n" + prefix + format_change(change).replace("<b>", "").replace("</b>", ""))
             if notifier and notify_existing and should_notify(change, config):
-                notifier.send(change)
+                _send_and_log(notifier, db, change)
 
         return processed
 
@@ -226,6 +268,11 @@ def main() -> None:
     parser.add_argument("--config", default="config.yml")
     parser.add_argument("--db", default="car_watch.sqlite3")
     parser.add_argument("--once", action="store_true", help="run once and exit")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="preview changes without writing the database, calling AI, or sending Telegram",
+    )
     parser.add_argument("--seed", action="store_true", help="populate DB without Telegram notifications")
     parser.add_argument("--test-telegram", action="store_true", help="send one test Telegram message and exit")
     parser.add_argument(
@@ -252,7 +299,7 @@ def main() -> None:
             print("[WARN] Databáze neobsahuje žádné dříve nalezené inzeráty.")
             return
         for item in items:
-            notifier.send(Change("new", item), recipient_name=args.resend_latest_to)
+            _send_and_log(notifier, db, Change("new", item), recipient_name=args.resend_latest_to)
             time.sleep(0.15)
         print(f"[OK] Odesláno {len(items)} inzerátů příjemci '{args.resend_latest_to}'.")
         return
@@ -265,11 +312,11 @@ def main() -> None:
         return
 
     if args.send_all:
-        run_once(config, db, send_all=True)
+        run_once(config, db, send_all=True, dry_run=args.dry_run)
         return
 
-    if args.once or args.seed:
-        run_once(config, db, notify_existing=not args.seed)
+    if args.once or args.seed or args.dry_run:
+        run_once(config, db, notify_existing=not args.seed, dry_run=args.dry_run)
         return
 
     interval = max(10, int(config.get("interval_minutes", 30))) * 60

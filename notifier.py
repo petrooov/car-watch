@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import os
+from collections.abc import Callable
 import httpx
 
 from db import Change
@@ -123,7 +124,12 @@ class TelegramNotifier:
             raise RuntimeError(f"Telegram API error: {data}")
         return data
 
-    def send(self, change: Change, recipient_name: str | None = None) -> None:
+    def send(
+        self,
+        change: Change,
+        recipient_name: str | None = None,
+        on_result: Callable[[str, str, str | None], None] | None = None,
+    ) -> list[str]:
         recipients = [
             recipient for recipient in self.recipients
             if recipient_name is None or recipient[2] == recipient_name
@@ -132,13 +138,23 @@ class TelegramNotifier:
             raise RuntimeError(f"Telegram příjemce '{recipient_name}' není aktivní nebo nemá vyplněné údaje.")
 
         text = format_change(change)
-        for token, chat_id, _name in recipients:
-            self._post(token, {
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": False,
-            })
+        sent: list[str] = []
+        for token, chat_id, name in recipients:
+            try:
+                self._post(token, {
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": False,
+                })
+            except Exception as exc:
+                if on_result:
+                    on_result(name, "failed", str(exc))
+                raise
+            sent.append(name)
+            if on_result:
+                on_result(name, "sent", None)
+        return sent
 
     def send_test(self, recipient_name: str | None = None) -> None:
         recipients = [
