@@ -47,9 +47,13 @@ def evaluate(item: Listing, cfg: dict) -> MatchResult:
     excluded_fuels = {
         _norm(str(fuel)) for fuel in defaults.get("excluded_fuels", [])
     }
-    detected_fuel = detect_fuel(
-        " ".join(filter(None, (item.title, item.fuel, item.detail_text)))
-    )
+    title_fuel = detect_fuel(item.title)
+    # A detail page can contain unrelated cars, navigation or generic dealer
+    # text mentioning diesel. Only consult the full detail when both the
+    # structured fuel field and the vehicle title are inconclusive.
+    detected_fuel = title_fuel
+    if item.fuel is None and detected_fuel is None:
+        detected_fuel = detect_fuel(item.detail_text)
     if item.fuel is None and detected_fuel:
         item.fuel = detected_fuel
     for fuel in (item.fuel, detected_fuel):

@@ -84,11 +84,11 @@ Na Macu můžeš také dvakrát kliknout na `run.command`. Při prvním spuště
 
 ## Co se hlídá
 
-- max. cena **550 000 Kč**
+- max. cena **550 000 Kč**, pro Volvo XC60 a Lexus NX **650 000 Kč**
 - naftová auta jsou vyřazená
 - auta s manuální převodovkou jsou vyřazená
 - mainstream: od 2019, ideál 2020+, max. 130 000 km
-- Volvo XC60 / Lexus NX: od 2018, max. 140 000 km
+- Volvo XC60 / Lexus NX: do 650 000 Kč, od 2018, max. 140 000 km
 - whitelist: RAV4, CX-5, CR-V, Outlander, Tucson, Santa Fe, Kuga, Sportage, Sorento, 5008, Tiguan, Kodiaq, Koleos, X-Trail, Forester, XC60, NX
 - Peugeot 3008 a Škoda Karoq nejsou sledované
 

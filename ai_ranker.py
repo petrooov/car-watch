@@ -39,6 +39,7 @@ EVALUATION_SCHEMA = {
 
 class AIRanker:
     def __init__(self, cfg: dict):
+        self.cfg = cfg
         ai_cfg = cfg.get("ai", {})
         self.enabled = bool(ai_cfg.get("enabled", False))
         self.model = ai_cfg.get("model", "gpt-5-mini")
@@ -74,12 +75,16 @@ class AIRanker:
 
         detail = (item.detail_text or "")[: self.max_detail_chars]
         peer_context = self.peer_context(item, peers)
+        defaults = self.cfg.get("filters", {})
+        rule = self.cfg.get("vehicle_rules", {}).get(item.model or "", {})
+        max_price = int(rule.get("max_price", defaults.get("max_price", 550_000)))
+        formatted_max_price = f"{max_price:,}".replace(",", " ")
 
         prompt = f"""
 Ohodnoť tento konkrétní inzerát na ojeté SUV pro českého kupujícího.
 
 Profil kupujícího:
-- maximální rozpočet 550 000 Kč
+- maximální rozpočet pro tento model {formatted_max_price} Kč
 - chce SUV zhruba velikosti Toyota RAV4
 - roční nájezd přibližně 20 000 km, kombinace město + dálnice
 - důležité jsou spolehlivost, rozumné provozní náklady a praktičnost

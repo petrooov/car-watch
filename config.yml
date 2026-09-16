@@ -76,12 +76,14 @@ vehicle_rules:
     aliases: ["Subaru Forester"]
   "Volvo XC60":
     aliases: ["Volvo XC60", "Volvo XC 60"]
+    max_price: 650000
     min_year: 2018
     max_mileage_km: 140000
     ideal_year: 2020
     bonus: 2
   "Lexus NX":
     aliases: ["Lexus NX", "Lexus NX 300h", "Lexus NX300h"]
+    max_price: 650000
     min_year: 2018
     max_mileage_km: 140000
     ideal_year: 2020
@@ -102,8 +104,8 @@ searches:
   - {name: "Renault Koleos", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/renault/koleos?cena-do=550000&vyrobeno-od=2018", enabled: true}
   - {name: "Nissan X-Trail", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/nissan/x-trail?cena-do=550000&vyrobeno-od=2018", enabled: true}
   - {name: "Subaru Forester", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/subaru/forester?cena-do=550000&vyrobeno-od=2018", enabled: true}
-  - {name: "Volvo XC60", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/volvo/xc60?cena-do=550000&vyrobeno-od=2018", enabled: true}
-  - {name: "Lexus NX", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/lexus/nx?cena-do=550000&vyrobeno-od=2018", enabled: true}
+  - {name: "Volvo XC60", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/volvo/xc60?cena-do=650000&vyrobeno-od=2018", enabled: true}
+  - {name: "Lexus NX", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/lexus/nx?cena-do=650000&vyrobeno-od=2018", enabled: true}
 
 
   # TipCars
@@ -155,8 +157,8 @@ searches:
   - {name: "Renault Koleos", source: carvago, url: "https://carvago.com/cs/auta/renault/koleos?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
   - {name: "Nissan X-Trail", source: carvago, url: "https://carvago.com/cs/auta/nissan/x-trail?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
   - {name: "Subaru Forester", source: carvago, url: "https://carvago.com/cs/auta/subaru/forester?price-to=550000&registration-date-from=2019&mileage-to=130000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
-  - {name: "Volvo XC60", source: carvago, url: "https://carvago.com/cs/auta/volvo/xc60?price-to=550000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
-  - {name: "Lexus NX", source: carvago, url: "https://carvago.com/cs/auta/lexus/nx?price-to=550000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Volvo XC60", source: carvago, url: "https://carvago.com/cs/auta/volvo/xc60?price-to=650000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
+  - {name: "Lexus NX", source: carvago, url: "https://carvago.com/cs/auta/lexus/nx?price-to=650000&registration-date-from=2018&mileage-to=140000&transmission[]=TRANSMISSION_AUTOMATIC&sort=publish-date&direction=desc&limit=20&page=1", enabled: true}
 
   # Větší SUV ve stejném cenovém limitu.
   - {name: "Hyundai Santa Fe", source: sauto, url: "https://www.sauto.cz/inzerce/osobni/hyundai/santa-fe?cena-do=550000&vyrobeno-od=2019", enabled: true}

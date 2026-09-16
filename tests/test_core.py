@@ -77,6 +77,30 @@ class ParserTests(unittest.TestCase):
                          [(548000, 2019, 116800), (699900, 2023, 5)])
         self.assertIn('Luxury 4x4', items[0].title)
 
+    def test_tipcars_does_not_treat_phev_range_as_mileage(self):
+        html = '''<div class="advertisement advertisement--small-img"
+        data-measure-data-value='["advertise", {"data": {"odometer": 212000}}, "signature"]'>
+        <section class="advertisement-name__title">
+          <a href="/ford-kuga/suv/hybridni-benzin/ford-kuga-2-5-phev-st-line-50km-dojezd-16007496.html"><h3>Ford Kuga</h3></a>
+          <p>2.5 phev, ST-LINE,50KM DOJEZD</p>
+        </section>
+        <div class="advertisement-name__price">429 000 Kč</div>
+        <div>2024, 212 000 km, 165 kW, hybridní - benzin</div>
+        </div>'''
+        items = TipCarsScraper(None).parse(html, "https://www.tipcars.com/ford-kuga")
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].mileage_km, 212000)
+        self.assertNotEqual(items[0].mileage_km, 50)
+
+    def test_tipcars_text_fallback_ignores_range_line(self):
+        html = '''<div class="advertisement">
+        <section class="advertisement-name__title"><a href="/ford-kuga-123.html"><h3>Ford Kuga</h3></a>
+        <p>PHEV 50 km dojezd</p></section>
+        <div class="advertisement-name__price">429 000 Kč</div>
+        <div>2024, 98 500 km, hybridní benzin</div></div>'''
+        items = TipCarsScraper(None).parse(html, "https://www.tipcars.com/ford-kuga")
+        self.assertEqual(items[0].mileage_km, 98500)
+
     def test_tipcars_does_not_borrow_neighbour_price(self):
         html = '''<main><article><a href="/first.html">Hyundai Santa Fe</a>
         <div>2019</div><div>90 000 km</div></article>
@@ -259,7 +283,7 @@ class ParserTests(unittest.TestCase):
             },
             "vehicle_rules": {
                 "Toyota RAV4": {"aliases": ["Toyota RAV4"]},
-                "Volvo XC60": {"aliases": ["Volvo XC60"], "min_year": 2018, "max_mileage_km": 140000},
+                "Volvo XC60": {"aliases": ["Volvo XC60"], "max_price": 650000, "min_year": 2018, "max_mileage_km": 140000},
             },
         }
         good = Listing("sauto", "1", "https://x/1", "Toyota RAV4 2.5 Hybrid", price=520000, currency="CZK", year=2020, mileage_km=108000)
@@ -270,6 +294,15 @@ class ParserTests(unittest.TestCase):
 
         premium = Listing("sauto", "3", "https://x/3", "Volvo XC60 D4", price=525000, currency="CZK", year=2018, mileage_km=125000)
         self.assertFalse(evaluate(premium, cfg).accepted)
+
+        premium_hybrid = Listing("sauto", "7", "https://x/7", "Volvo XC60 T8 PHEV", price=625000, currency="CZK", year=2020, mileage_km=110000)
+        self.assertTrue(evaluate(premium_hybrid, cfg).accepted)
+
+        premium_over_limit = Listing("sauto", "8", "https://x/8", "Volvo XC60 T8 PHEV", price=660000, currency="CZK", year=2020, mileage_km=110000)
+        self.assertFalse(evaluate(premium_over_limit, cfg).accepted)
+
+        structured_hybrid = Listing("carvago", "9", "https://x/9", "Volvo XC60 T6 AWD", price=640000, currency="CZK", year=2022, mileage_km=120000, fuel="Hybridní", transmission="Automat", detail_text="Další nabídky: diesel TDI")
+        self.assertTrue(evaluate(structured_hybrid, cfg).accepted)
 
         old_mainstream = Listing("sauto", "4", "https://x/4", "Toyota RAV4", price=450000, currency="CZK", year=2018, mileage_km=90000)
         self.assertFalse(evaluate(old_mainstream, cfg).accepted)
