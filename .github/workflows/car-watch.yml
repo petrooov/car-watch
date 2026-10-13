@@ -4,7 +4,7 @@ on:
   schedule:
     # 07:00 a 16:00 UTC = 09:00 a 18:00 v Praze během letního času.
     # V zimě poběží přibližně v 08:00 a 17:00.
-    - cron: "0 7,16 * * *"
+    #- cron: "0 7,16 * * *"
   workflow_dispatch:
     inputs:
       resend_latest_to:
